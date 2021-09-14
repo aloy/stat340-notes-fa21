@@ -1,0 +1,29 @@
+---
+geometry: margin = 1in
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, eval = FALSE)
+```
+
+\pagenumbering{gobble} 
+
+# Stat 340 -- Probability Review
+
+A spam filter is designed by looking at commonly occurring phrases in spam. Suppose that 80% of email is spam. In 10% of the spam emails, the phrase “free money” is used, whereas this phrase is only used in 1% of non-spam emails. 
+
+1. What is the probability an email contains the phrase “free money” and is spam? 
+
+    \vspace{1.5in}
+
+2. Write the event that an email contains the phrase “free money” as the union of disjoint events. 
+
+    \vspace{1.5in}
+
+3. What is the probability that an email contains the phrase “free money?” 
+
+    \vspace{1.5in}
+
+4. A new email has just arrived, which does mention “free money.” What is the probability that it is spam?

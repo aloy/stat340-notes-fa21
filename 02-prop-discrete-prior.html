@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Learning about a Binomial Probability</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/countdown/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown/countdown.js"></script>
+    <script src="libs/kePrint/kePrint.js"></script>
+    <link href="libs/lightable/lightable.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+background-image: url("img/horst_tidyverse_celestial.png")
+background-position: right
+background-size: 56.5%
+
+
+# Learning about a Binomial Probability
+
+### Stat 340: Bayesian Statistics
+
+---
+class: middle
+
+# 1. Comparing paradigms
+
+# 2. Discrete prior
+
+# 3. Posterior analysis
+
+# (Problem topics 1-3)
+
+---
+background-image: url(figs/01-neglect1.jpg)
+background-position: right
+background-size: 45%
+
+# Neuroscience example
+
+.pull-left[
+
+### Hemispatial neglect
+
+Reduced capacity to process visual info from one side of their visual space
+
+
+
+&lt;br&gt;
+
+
+
+### Blindsight hypothesis
+
+People with hemispatial neglect may be aware of stimuli that cannot be consciously recollected or identified
+
+
+
+]
+
+
+---
+background-image: url(figs/01-burning-house.png)
+background-position: right
+background-size: 40%
+
+# Marshall &amp; Halligan (1988)
+
+.left-wide[
+
+Simplified version of the study:
+
+- Patient (P.S.) presented with two cards in random order
+
+- Asked to identify which house she would rather live in
+
+- `\(Y=\)` # times P.S. chose non-burning house
+
+&lt;br&gt;
+
+.scriptsize[Marshall, J. C., &amp; Halligan, P. W. (1988). Blindsight and insight in visuo-spatial neglect. *Nature*, 336(6201), 766.]
+
+]
+
+
+
+
+---
+
+# Before seeing any data...
+
+
+`\(p =\)` probability of choosing the non-burning house
+
+1. What's your best guess about `\(p\)`?
+&lt;br style = "line-height:5;"&gt;
+
+2. What’s `\({\rm P}(p &gt; 1/2)\)`?
+
+<div class="countdown" id="timer_6137ce80" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+---
+
+# After seeing the data...
+
+
+P.S. chose non-burning house 14 out of 17 trials
+
+1. What's your best guess about `\(p\)`?
+&lt;br style = "line-height:5;"&gt;
+
+2. What’s `\({\rm P}(p &gt; 1/2)\)`?
+
+
+<div class="countdown" id="timer_6137cf7b" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+---
+class: middle, inverse
+
+.big-text[frequentist procedure] 
+
+# quantifies uncertainty in terms of repeating the process that generated the data many times
+
+
+
+---
+
+# Would a frequentist ever claim that...
+
+--
+
+- .Large[
+`\({\rm P}( Y &gt; 14) = 0.75\)`?
+]
+
+--
+
+- .Large[
+`\({\rm P}( p &gt; 0.5) = 0.75\)`?
+]
+
+--
+
+- .Large[ 
+`\(p \sim {\rm Unif}\)`(0.25, 0.5)?
+]
+
+--
+
+- .Large[
+the probability that the true proportion of correct guesses is in the interval (0.64, 1) is 0.95?
+]
+
+--
+
+- .Large[
+the probability that the null hypothesis, `\(H_0: \ p = 0.5\)`, is true is 0.0002?
+]
+
+---
+class:middle, inverse
+
+.big-text[Bayesian procedure] 
+
+# quantifies uncertainty about the parameters that remain after accounting for prior knowledge and the information in the observed data
+
+
+---
+
+# Would a Bayesian ever claim that...
+
+--
+
+- .Large[
+`\({\rm P}(Y &gt; 14) = 0.75\)`?
+]
+
+--
+
+- .Large[
+`\({\rm P}(p &gt; 0.5) = 0.75\)`?
+]
+
+--
+
+- .Large[ 
+`\(p \sim {\rm Unif}\)`(0.25, 0.5)?
+]
+
+--
+
+- .Large[
+the probability that the true proportion of correct guesses is in the interval (0.64, 1) is 0.95?
+]
+
+--
+
+- .Large[
+the probability that the null hypothesis, `\(H_0: \ p = 0.5\)`, is true is 0.0002?
+]
+
+---
+
+class: middle, inverse
+
+.big-text[Updating a discrete prior]
+
+---
+
+# Design
+
+.Large[
+
+**Data:** N N N N .red[**B B**] N N N  .red[**B**] N N N N N N N (14 Ns; .red[**3 Bs**])
+
+&lt;br&gt;
+
+**Data model (.content-box-gray[likelihood]):**
+
+Some true proportion of guesses, `\(p\)`
+
+Toss a coin with probability of heads, `\(p\)`
+
+&lt;br&gt;
+
+**.content-box-gray[Prior] belief about `\(p\)`:**
+
+Uniform over {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9}
+
+]
+
+---
+
+# Condition
+
+
+
+### Posterior distribution
+
+The distribution of `\(p\)` that incorporates both the prior information and the data. 
+
+
+the &lt;font color = "#26A69A"&gt;**posterior**&lt;/font&gt; is the &lt;font color = '#FDD835'&gt;**prior**&lt;/font&gt; *conditioned* on &lt;font color = '#9C27B0'&gt;**evidence**&lt;/font&gt;
+
+
+&lt;!-- 15 --&gt;
+
+`\(\pi(p | y) = {\rm P}(p = k | y)\)`
+
+
+
+
+
+
+---
+class: clear, center, middle
+
+.Large[
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:center;"&gt; p &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; prior probability &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; likelihood &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; posterior plausibility (prior x likelihood) &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; posterior probability &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.1 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.2 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0000001 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000001 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.3 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0000112 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0000012 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.4 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0003943 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0000438 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0007053 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.5 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0051880 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0005764 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0092803 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.6 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.0341041 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0037893 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0610052 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.7 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.1245218 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0138358 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.2227440 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.8 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.2392537 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0265837 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.4279761 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.9 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;"&gt; 0.1555622 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 2.5in; "&gt; 0.0172847 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.2782690 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+
+---
+background-image: url(img/blindsight-posterior.png)
+background-size: contain
+
+
+
+---
+
+# Inference
+
+.large[
+`\({\rm P}(p = 0.5 | Y = 14)\)`?
+
+`\({\rm P}(p \ge 0.5 | Y = 14)\)`?
+]
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:center;"&gt; p &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; Prior &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; Likelihood &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; Product &lt;/th&gt;
+   &lt;th style="text-align:center;"&gt; Posterior &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.1 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.2 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000001 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000000 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000001 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.3 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000112 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000012 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.4 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0003943 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0000438 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0007053 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.5 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0051880 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0005764 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0092803 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.6 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0341041 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0037893 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0610052 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.7 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1245218 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0138358 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.2227440 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.8 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.2392537 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0265837 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.4279761 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:center;"&gt; 0.9 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1111111 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.1555622 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.0172847 &lt;/td&gt;
+   &lt;td style="text-align:center;width: 1.5in; "&gt; 0.2782690 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+background-image: url(img/02-sequential-bayes.png)
+background-size: contain
+## Can we update our belief as we acquire data?
+
+
+
+
+---
+
+# <svg aria-hidden="true" role="img" viewBox="0 0 496 512" style="height:1em;width:0.97em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M328.2 255.8h151.6c9.1 0 16.8-7.7 16.2-16.8-5.1-75.8-44.4-142.2-102.5-184.2-7.4-5.3-17.9-2.9-22.7 4.8L290.4 188c22.6 14.3 37.8 39.2 37.8 67.8zm-37.8 67.7c-12.3 7.7-26.8 12.4-42.4 12.4-15.6 0-30-4.7-42.4-12.4L125.2 452c-4.8 7.7-2.4 18.1 5.6 22.4C165.7 493.2 205.6 504 248 504s82.3-10.8 117.2-29.6c8-4.3 10.4-14.8 5.6-22.4l-80.4-128.5zM248 303.8c26.5 0 48-21.5 48-48s-21.5-48-48-48-48 21.5-48 48 21.5 48 48 48zm-231.8-48h151.6c0-28.6 15.2-53.5 37.8-67.7L125.2 59.7c-4.8-7.7-15.3-10.2-22.7-4.8C44.4 96.9 5.1 163.3 0 239.1c-.6 9 7.1 16.7 16.2 16.7z"/></svg> Bayesian inference must be supervised
+
+
+
+
+- Did the model malfunction?
+
+- Does the model's answer make sense?
+
+- Does the question make sense?
+
+- Check sensitivity of the answer to changes in the assumptions
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

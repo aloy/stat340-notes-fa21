@@ -1,0 +1,50 @@
+---
+title: "Selecting reasonable prior distributions"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(ggplot2)
+library(countdown)
+library(fontawesome)
+library(xaringanthemer)
+library(ggthemes)
+library(janitor)
+yt <- 0
+```
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+# 1. Types of priors
+
+# 2. Using prior information
+
+# 3. Sensitivity to priors
+
+# (Problem topics XX)
+

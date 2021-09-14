@@ -1,0 +1,413 @@
+---
+title: "Learning about a Binomial Probability"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(countdown)
+library(fontawesome)
+library(xaringanthemer)
+```
+
+class: title-slide, left, middle
+background-image: url("img/horst_tidyverse_celestial.png")
+background-position: right
+background-size: 56.5%
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+# 1. Comparing paradigms
+
+# 2. Discrete prior
+
+# 3. Posterior analysis
+
+# (Problem topics 1-3)
+
+---
+background-image: url(figs/01-neglect1.jpg)
+background-position: right
+background-size: 45%
+
+# Neuroscience example
+
+.pull-left[
+
+### Hemispatial neglect
+
+Reduced capacity to process visual info from one side of their visual space
+
+
+
+<br>
+
+
+
+### Blindsight hypothesis
+
+People with hemispatial neglect may be aware of stimuli that cannot be consciously recollected or identified
+
+
+
+]
+
+
+---
+background-image: url(figs/01-burning-house.png)
+background-position: right
+background-size: 40%
+
+# Marshall & Halligan (1988)
+
+.left-wide[
+
+Simplified version of the study:
+
+- Patient (P.S.) presented with two cards in random order
+
+- Asked to identify which house she would rather live in
+
+- $Y=$ # times P.S. chose non-burning house
+
+<br>
+
+.scriptsize[Marshall, J. C., & Halligan, P. W. (1988). Blindsight and insight in visuo-spatial neglect. *Nature*, 336(6201), 766.]
+
+]
+
+
+
+
+---
+
+# Before seeing any data...
+
+
+$p =$ probability of choosing the non-burning house
+
+1. What's your best guess about $p$?
+<br style = "line-height:5;">
+
+2. What’s ${\rm P}(p > 1/2)$?
+
+```{r echo=FALSE}
+countdown(minutes = 2, seconds = 0)
+```
+
+---
+
+# After seeing the data...
+
+
+P.S. chose non-burning house 14 out of 17 trials
+
+1. What's your best guess about $p$?
+<br style = "line-height:5;">
+
+2. What’s ${\rm P}(p > 1/2)$?
+
+
+```{r echo=FALSE}
+countdown(minutes = 2, seconds = 0)
+```
+
+---
+class: middle, inverse
+
+.big-text[frequentist procedure] 
+
+# quantifies uncertainty in terms of repeating the process that generated the data many times
+
+
+
+---
+
+# Would a frequentist ever claim that...
+
+--
+
+- .Large[
+${\rm P}( Y > 14) = 0.75$?
+]
+
+--
+
+- .Large[
+${\rm P}( p > 0.5) = 0.75$?
+]
+
+--
+
+- .Large[ 
+$p \sim {\rm Unif}$(0.25, 0.5)?
+]
+
+--
+
+- .Large[
+the probability that the true proportion of correct guesses is in the interval (0.64, 1) is 0.95?
+]
+
+--
+
+- .Large[
+the probability that the null hypothesis, $H_0: \ p = 0.5$, is true is 0.0002?
+]
+
+---
+class:middle, inverse
+
+.big-text[Bayesian procedure] 
+
+# quantifies uncertainty about the parameters that remain after accounting for prior knowledge and the information in the observed data
+
+
+---
+
+# Would a Bayesian ever claim that...
+
+--
+
+- .Large[
+${\rm P}(Y > 14) = 0.75$?
+]
+
+--
+
+- .Large[
+${\rm P}(p > 0.5) = 0.75$?
+]
+
+--
+
+- .Large[ 
+$p \sim {\rm Unif}$(0.25, 0.5)?
+]
+
+--
+
+- .Large[
+the probability that the true proportion of correct guesses is in the interval (0.64, 1) is 0.95?
+]
+
+--
+
+- .Large[
+the probability that the null hypothesis, $H_0: \ p = 0.5$, is true is 0.0002?
+]
+
+---
+
+class: middle, inverse
+
+.big-text[Updating a discrete prior]
+
+---
+
+# Design
+
+.Large[
+
+**Data:** N N N N .red[**B B**] N N N  .red[**B**] N N N N N N N (14 Ns; .red[**3 Bs**])
+
+<br>
+
+**Data model (.content-box-gray[likelihood]):**
+
+Some true proportion of guesses, $p$
+
+Toss a coin with probability of heads, $p$
+
+<br>
+
+**.content-box-gray[Prior] belief about $p$:**
+
+Uniform over {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9}
+
+]
+
+---
+
+# Condition
+
+
+
+### Posterior distribution
+
+The distribution of $p$ that incorporates both the prior information and the data. 
+
+
+the <font color = "#26A69A">**posterior**</font> is the <font color = '#FDD835'>**prior**</font> *conditioned* on <font color = '#9C27B0'>**evidence**</font>
+
+
+<!-- 15 -->
+
+$\pi(p | y) = {\rm P}(p = k | y)$
+
+
+
+
+```{r include=FALSE}
+library(dplyr)
+blindsight <-
+  data_frame(p =  seq(0.1, 0.9, by = .1)) %>% 
+  mutate(
+    prior = 1 / 9,                                  # recycles automatically
+    likelihood =  dbinom(14, size = 17, prob = p),  # binomial likelihood
+    unstd.prior = likelihood * prior,               # posterior plausibility
+    posterior = unstd.prior / sum(unstd.prior)      # posterior probability
+  )  
+```
+
+---
+class: clear, center, middle
+
+.Large[
+```{r echo=FALSE}
+# Formatting for printing
+post_df <- blindsight
+colnames(post_df) <- c("p", "prior probability", "likelihood", "posterior plausibility (prior x likelihood)", "posterior probability")
+knitr::kable(post_df, format = "html", position = "float_right", align=rep('c', 5)) %>%
+  kableExtra::column_spec(4, width = "2.5in") %>%
+  kableExtra::column_spec(c(2,5), width = "1.5in")
+```
+]
+
+---
+background-image: url(img/blindsight-posterior.png)
+background-size: contain
+
+```{r dev = 'svg', fig.width = 5, fig.height = 3, echo=FALSE, out.width = '100%', fig.show='hide'}
+library(ggplot2)
+ggplot(data = blindsight, aes(x = p)) +
+  geom_point(aes(y = posterior, color = "posterior")) +
+  geom_line(aes( y = posterior, color = "posterior")) +
+  geom_point(aes(y = prior, color = "prior")) +
+  geom_line(aes( y = prior, color = "prior")) +
+  geom_point(aes(y = likelihood, color = "likelihood")) +
+  geom_line(aes( y = likelihood, color = "likelihood")) +
+  labs(x = "probability of guessing non-burning house", 
+       y = "posterior probability") +
+  scale_color_viridis_d("Component") +
+  theme_minimal()
+ggsave("img/blindsight-posterior.png", height = 4, width = 6.667)
+```
+
+---
+
+# Inference
+
+.large[
+${\rm P}(p = 0.5 | Y = 14)$?
+
+${\rm P}(p \ge 0.5 | Y = 14)$?
+]
+
+```{r echo=FALSE, results='asis'}
+# What out, this is very case sensitive!!
+df <- data.frame(p = seq(.1, .9, by = .1), Prior=rep(1/9, 9))
+y <- 14
+n <- 17
+df$Likelihood <- dbinom(y, prob = df$p, size = n)
+df <- ProbBayes::bayesian_crank(df)
+
+knitr::kable(df, format = "html", position = "float_right", align=rep('c', 5)) %>%
+  kableExtra::column_spec(2:5, width = "1.5in")
+```
+
+
+---
+background-image: url(img/02-sequential-bayes.png)
+background-size: contain
+## Can we update our belief as we acquire data?
+
+```{r dev = 'svg', fig.width = 9, fig.height = 5, echo=FALSE, fig.show='hide'}
+# Sequential updating
+blindsight_data <- c("N", "N", "N", "N", "B", "B", "N", "N", "N", "B", "N", "N", "N","N", "N", "N", "N")
+success <- cumsum(blindsight_data == "N")
+
+post_plots <- list()
+
+ps <- data_frame(p =  seq(0.1, 0.9, by = .1))
+for(i in seq_along(success)) {
+  if(i == 1) {
+    update_df <- ps %>% mutate(prior = 1 / 9)
+  } else {
+    update_df <- update_df %>% select(p, prior = posterior)
+  }
+  
+  update_df <- update_df %>%
+    mutate(
+    likelihood =  dbinom(success[i], size = i, prob = p),  # binomial likelihood
+    unstd.prior = likelihood * prior,                      # posterior plausibility
+    posterior = unstd.prior / sum(unstd.prior)             # posterior probability
+  ) 
+  
+  tmp_plot <- 
+    ggplot(data = update_df, aes(x = p)) +
+    geom_point(aes(y = posterior, color = "posterior")) +
+    geom_line(aes( y = posterior, color = "posterior")) +
+    geom_point(aes(y = prior, color = "prior")) +
+    geom_line(aes( y = prior, color = "prior"), linetype = 2) +
+    labs(y = "plausibility",
+         title = paste0(blindsight_data[1:i], collapse = "")) +
+    theme_minimal() +
+    theme(axis.title.x=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          legend.position="none",
+          plot.title = element_text(size = 7)) +
+    scale_color_manual(values = c("black", "gray70"))
+  
+  if(!i %in% c(1, 7, 13)) tmp_plot <- tmp_plot + theme(axis.title.y=element_blank())
+  
+  if(i %in% 1:12)  tmp_plot <- tmp_plot + ylim(0, .8)
+  else  tmp_plot <- tmp_plot + ylim(0, 1)
+  
+  post_plots[[i]] <- tmp_plot 
+}
+n <- length(post_plots)
+nCol <- 6
+posterior_plots <- do.call("grid.arrange", c(post_plots, ncol=nCol))
+ggsave(posterior_plots, filename = "img/02-sequential-bayes.png", width = 9, height = 5)
+```
+
+
+---
+
+# `r fa("radiation")` Bayesian inference must be supervised
+
+
+
+
+- Did the model malfunction?
+
+- Does the model's answer make sense?
+
+- Does the question make sense?
+
+- Check sensitivity of the answer to changes in the assumptions
+
