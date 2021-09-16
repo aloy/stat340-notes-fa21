@@ -27,9 +27,6 @@ library(xaringanthemer)
 ```
 
 class: title-slide, left, middle
-background-image: url("img/horst_tidyverse_celestial.png")
-background-position: right
-background-size: 56.5%
 
 
 # `r rmarkdown::metadata$title`
@@ -48,91 +45,174 @@ class: middle
 # (Problem topics 1-3)
 
 ---
-background-image: url(figs/01-neglect1.jpg)
-background-position: right
-background-size: 45%
+class:middle, inverse
 
-# Neuroscience example
+.big-text[A Bayesian "personality quiz"]
+
+.footnote[Adapted from *Bayes Rules! An Introduction to Bayesian Modeling with R* by Johnson, Ott & Dogucu]
+
+---
+
+## Question 1
+
+When flipping a fair coin, we say that "the probability of flipping Heads is 0.5." How do you interpret this probability?
+
+1. If I flip this coin over and over, roughly 50% will be Heads.
+
+2. Heads and Tails are equally plausible.
+
+3. Both a and b make sense.
+
+
+---
+
+## Question 2
+
+
+An election is coming up and a pollster claims that "candidate A has a 0.9 probability of winning." How do you interpret this probability?
+
+
+1. If we observe the election over and over, candidate A will win roughly 90% of the time.
+
+2. Candidate A is much more likely to win than to lose.
+
+3. The pollster's calculation is wrong. Candidate A will either win or lose, thus their probability of winning can only be 0 or 1.
+
+
+---
+
+## Question 3
+
+
+Consider two claims. 
+
+- Zuofu claims that he can predict the outcome of a coin flip. To test his claim, you flip a fair coin 10 times and he correctly predicts all 10. 
+- Kavya claims that she can distinguish natural and artificial sweeteners. To test her claim, you give her 10 sweetener samples and she correctly identifies each. 
+
+In light of these experiments, what do you conclude?
+
+1. You're more confident in Kavya's claim than Zuofu's claim.
+
+2. The evidence supporting Zuofu's claim is just as strong as the evidence supporting Kavya's claim.
+
+
+---
+
+## Question 4
+
+
+Suppose that during a recent doctor's visit, you tested positive for a very rare disease. If you only get to ask the doctor one question, which would it be?
+
+1. What's the chance that I actually have the disease?
+
+2. If in fact I don't have the disease, what's the chance that I would've gotten this positive test result?
+
+
+---
+
+## Tally your points
+
 
 .pull-left[
-
-### Hemispatial neglect
-
-Reduced capacity to process visual info from one side of their visual space
+Question 1:
 
 
+- 1 = 1 points
+- 2 = 3 points
+- 3 = 2 points
 
+
+Question 2:
+
+- 1 = 1 points
+- 2 = 3 points
+- 3 = 1 points
+] .pull-right[
+Question 3:
+
+- 1 = 3 points
+- 2 = 1 points
+<br>
 <br>
 
+Question 4:
 
 
-### Blindsight hypothesis
-
-People with hemispatial neglect may be aware of stimuli that cannot be consciously recollected or identified
-
-
-
+- 1 = 3 points
+- 2 = 1 points
 ]
 
 
 ---
-background-image: url(figs/01-burning-house.png)
-background-position: right
-background-size: 40%
 
-# Marshall & Halligan (1988)
+## What does your score mean?
 
-.left-wide[
+- 4-5 $\rightarrow$ you're more of a frequentist thinker 
 
-Simplified version of the study:
+- 6-8 $\rightarrow$ you see the merit in both (a pragmatist?)
 
-- Patient (P.S.) presented with two cards in random order
-
-- Asked to identify which house she would rather live in
-
-- $Y=$ # times P.S. chose non-burning house
-
-<br>
-
-.scriptsize[Marshall, J. C., & Halligan, P. W. (1988). Blindsight and insight in visuo-spatial neglect. *Nature*, 336(6201), 766.]
-
-]
-
-
+- 9-12 $\rightarrow$ you're more of a Bayesian thinker 
 
 
 ---
 
-# Before seeing any data...
+
+## Question 1: Interpreting probability
 
 
-$p =$ probability of choosing the non-burning house
+When flipping a fair coin, we say that "the probability of flipping Heads is 0.5." How do you interpret this probability?
 
-1. What's your best guess about $p$?
-<br style = "line-height:5;">
+1. (Frequentist) If I flip this coin over and over, roughly 50% will be Heads.
 
-2. What’s ${\rm P}(p > 1/2)$?
+2. (Bayesian) Heads and Tails are equally plausible.
 
-```{r echo=FALSE}
-countdown(minutes = 2, seconds = 0)
-```
+3. Both a and b make sense.
+
 
 ---
 
-# After seeing the data...
+## Question 2: Interpreting probability
 
 
-P.S. chose non-burning house 14 out of 17 trials
-
-1. What's your best guess about $p$?
-<br style = "line-height:5;">
-
-2. What’s ${\rm P}(p > 1/2)$?
+An election is coming up and a pollster claims that "candidate A has a 0.9 probability of winning." How do you interpret this probability?
 
 
-```{r echo=FALSE}
-countdown(minutes = 2, seconds = 0)
-```
+1. (Frequentist) If we observe the election over and over, candidate A will win roughly 90% of the time.
+
+2. (Bayesian) Candidate A is much more likely to win than to lose.
+
+3. (Rabid frequentist) The pollster's calculation is wrong. Candidate A will either win or lose, thus their probability of winning can only be 0 or 1.
+
+
+---
+
+## Question 3: Balancing prior info and observed data
+
+
+Consider two claims. 
+
+- Zuofu claims that he can predict the outcome of a coin flip. To test his claim, you flip a fair coin 10 times and he correctly predicts all 10. 
+- Kavya claims that she can distinguish natural and artificial sweeteners. To test her claim, you give her 10 sweetener samples and she correctly identifies each. 
+
+In light of these experiments, what do you conclude?
+
+
+1. (Bayesian) You're more confident in Kavya's claim than Zuofu's claim.
+
+2. (Frequentist) The evidence supporting Zuofu's claim is just as strong as the evidence supporting Kavya's claim.
+
+
+---
+
+## Question 4: Asking questions
+
+
+Suppose that during a recent doctor's visit, you tested positive for a very rare disease. If you only get to ask the doctor one question, which would it be?
+
+1. (Bayesian) What's the chance that I actually have the disease?
+
+2. (Frequentist) If in fact I don't have the disease, what's the chance that I would've gotten this positive test result?
+
 
 ---
 class: middle, inverse
@@ -219,11 +299,68 @@ the probability that the true proportion of correct guesses is in the interval (
 the probability that the null hypothesis, $H_0: \ p = 0.5$, is true is 0.0002?
 ]
 
+
 ---
 
 class: middle, inverse
 
 .big-text[Updating a discrete prior]
+
+
+
+---
+background-image: url(figs/01-neglect1.jpg)
+background-position: right
+background-size: 45%
+
+# Neuroscience example
+
+.pull-left[
+
+### Hemispatial neglect
+
+Reduced capacity to process visual info from one side of their visual space
+
+
+
+<br>
+
+
+
+### Blindsight hypothesis
+
+People with hemispatial neglect may be aware of stimuli that cannot be consciously recollected or identified
+
+
+
+]
+
+
+---
+background-image: url(figs/01-burning-house.png)
+background-position: right
+background-size: 40%
+
+# Marshall & Halligan (1988)
+
+.left-wide[
+
+Simplified version of the study:
+
+- Patient (P.S.) presented with two cards in random order
+
+- Asked to identify which house she would rather live in
+
+- $Y=$ # times P.S. chose non-burning house
+
+- $p =$ probability of choosing the non-burning house
+
+<br>
+
+.scriptsize[Marshall, J. C., & Halligan, P. W. (1988). Blindsight and insight in visuo-spatial neglect. *Nature*, 336(6201), 766.]
+
+]
+
 
 ---
 
