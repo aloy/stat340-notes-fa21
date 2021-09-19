@@ -31,12 +31,15 @@ yt <- 0
 ```
 
 class: title-slide, left, middle
+background-image: url(img/densities.png)
+background-position: right
+background-size: 45%
 
-
+.left-wide[
 # `r rmarkdown::metadata$title`
 
 ### `r rmarkdown::metadata$author`
-
+]
 ---
 class: middle
 
@@ -44,7 +47,9 @@ class: middle
 
 # 2. Posterior analysis
 
-# (Problem topics 1-3)
+# 3. Prediction
+
+# (Problem topics 1-4)
 
 ---
 
@@ -98,9 +103,11 @@ class: inverse
 
 # Your turn `r (yt <- yt + 1)`
 
-- Break into groups
+- Work with your neighbors
 
 - Work through the R code to simulate kernels of the beta distribution
+
+- You can copy/paste the code from the course webpage
 
 - Develop your understanding of the kernel of a distribution
 
@@ -115,7 +122,7 @@ class: inverse
 # Your turn `r (yt <- yt + 1)`
 
 
-- Break into groups
+- Work with your neighbors
 
 - Derive the posterior
 
@@ -354,7 +361,7 @@ janitor::tabyl(sim_y)
 
 How can we construct an 89% prediction interval?
 
-Put in the most likely values until the probability is at least 0.89
+Put in the most likely values until the probability is **at least** 0.89
 
 ```{r}
 post_pred_dsn <- janitor::tabyl(sim_y)[, -2]
@@ -365,3 +372,16 @@ LearnBayes::discint(post_pred_dsn, prob = 0.89)
 class: inverse 
 
 # Your turn `r (yt <- yt + 1)`
+
+Let  $p$ denote the proportion of U.S. adults that do not believe in climate change. Of 1000 survey respondents, 150 responded that it was "not real at all".
+
+1. Using a Beta(1, 2) prior distribution, what is the posterior distribution of $p$?
+
+2. Simulate 1000 draws from the posterior distribution.
+
+3. Use your simulated draws to calculate a 93% credible interval
+ equal-tailed for $p$. Interpret this interval in context.
+
+4. Suppose you were to survey 100 more adults. Approximate the probability that at least 20 of the 100 people don’t believe in climate change.
+
+.footnote[https://thepulseofthenation.com/, data from September 2017. ]

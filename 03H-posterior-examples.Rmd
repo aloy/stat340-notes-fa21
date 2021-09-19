@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 yt <- 0
 ```
 
-# Working with continuour prior distributions
+# Working with continuous prior distributions
 ## Stat 340, Fall 2021
 
 \bigskip
@@ -65,3 +65,29 @@ $$f(x| p) = p(1-p)^{x-1};\ x = 1, 2, \ldots, \ \ 0 < p < 1$$
 3. Is the beta prior a conjugate family to the geometric likelihood?
 
 
+\clearpage
+
+### Your turn `r (yt <- yt+1)`: 
+
+Let  $p$ denote the proportion of U.S. adults that do not believe in climate change. Cards Against Humanity's "Pulse of the Nation" project (https://thepulseofthenation.com/) conducted monthly polls into people's social and political views, as well as some silly things. This data includes responses to a subset of questions included in the poll conducted in September 2017. Of 1000 survey respondents, 150 responded that it was "not real at all".
+
+1. Using a Beta(1, 2) prior distribution, what is the posterior distribution of $p$?
+
+\vspace{1.25in}
+
+2. Simulate 1000 draws from the posterior distribution by completing the code in the below chunk:
+
+    ```{r eval=FALSE}
+p_draws <- ___(n = ___, ___, ___)
+```
+
+3. Use your simulated draws to calculate a 93% credible interval
+ equal-tailed for $p$. Interpret this interval in context.
+ 
+\vspace{1.25in}
+ 
+4. Suppose you were to survey 100 more adults. Use simulated draws from part 2 to approximate the posterior predictive model of $\tilde{Y}$, the number that don’t believe in climate change. 
+
+    Construct a histogram of this predictive model (distribution).
+
+    Approximate the probability that at least 20 of the 100 people don’t believe in climate change.
