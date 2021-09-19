@@ -204,6 +204,23 @@ plot(x, kernel, type = &quot;l&quot;, main = &quot;Kernel&quot;)</code></pre></l
 <li><p>Is the beta prior a conjugate family to the geometric likelihood?</p></li>
 </ol>
 </div>
+<div id="your-turn-3" class="section level3">
+<h3>Your turn 3:</h3>
+<p>Let <span class="math inline">\(p\)</span> denote the proportion of U.S. adults that do not believe in climate change. Cards Against Humanity’s “Pulse of the Nation” project (<a href="https://thepulseofthenation.com/" class="uri">https://thepulseofthenation.com/</a>) conducted monthly polls into people’s social and political views, as well as some silly things. This data includes responses to a subset of questions included in the poll conducted in September 2017. Of 1000 survey respondents, 150 responded that it was “not real at all”.</p>
+<ol style="list-style-type: decimal">
+<li>Using a Beta(1, 2) prior distribution, what is the posterior distribution of <span class="math inline">\(p\)</span>?</li>
+</ol>
+<ol start="2" style="list-style-type: decimal">
+<li><p>Simulate 1000 draws from the posterior distribution by completing the code in the below chunk:</p>
+<pre class="r"><code>p_draws &lt;- ___(n = ___, ___, ___)</code></pre></li>
+<li><p>Use your simulated draws to calculate a 93% credible interval equal-tailed for <span class="math inline">\(p\)</span>. Interpret this interval in context.</p></li>
+</ol>
+<ol start="4" style="list-style-type: decimal">
+<li><p>Suppose you were to survey 100 more adults. Use simulated draws from part 2 to approximate the posterior predictive model of <span class="math inline">\(\tilde{Y}\)</span>, the number that don’t believe in climate change.</p>
+<p>Construct a histogram of this predictive model (distribution).</p>
+<p>Approximate the probability that at least 20 of the 100 people don’t believe in climate change.</p></li>
+</ol>
+</div>
 </div>
 </div>
 
