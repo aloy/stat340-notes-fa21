@@ -1,5 +1,5 @@
 ---
-title: "Selecting reasonable prior distributions"
+title: "Tuning beta prior distributions"
 author: "Stat 340: Bayesian Statistics"
 output:
   xaringan::moon_reader:
@@ -40,11 +40,364 @@ class: title-slide, left, middle
 ---
 class: middle
 
-# 1. Types of priors
+# Informative prior distributions
 
-# 2. Using prior information
+# 1. Data augmentation
+
+# 2. Using domain expertise
 
 # 3. Sensitivity to priors
 
-# (Problem topics XX)
+# (Problem topics 1 & 5)
+
+---
+class: inverse 
+
+# Your turn `r (yt <- yt+1)`
+
+Work through the Bechdel Test prior elicitation example.
+
+Discuss ideas with your neighbors
+
+Explore the use of a few functions in the `{bayesrule}` R package
+
+- `plot_beta`
+
+- `plot_beta_binomial`
+
+- `summarize_beta_binomial`
+
+```{r echo=FALSE}
+countdown(minutes = 10)
+```
+
+
+.footnote[Run `install.packages("bayesrules")` first if working on your own computer.]
+
+---
+class: inverse, middle
+
+.big-text[Informative priors]
+
+---
+
+## 1. Data augmentation priors
+
+.left-column[
+
+## Assumption
+
+## Likelihood
+
+## Prior
+
+## Posterior
+
+]
+
+.right-column[
+
+
+we have *n* independent and identically distributed (iid) success/failure trials<br>
+
+
+$Y|p \sim \text{Binomial}(n, p)$ <br> <br>
+
+$p \in [0, 1]$, so Beta(*a*, *b*) is a good choice<br> <br>
+
+$p |Y \sim \text{Beta}(a + Y, b + n − Y)$ <br>
+
+$a =$ prior successes; $b =$ prior failures
+
+
+]
+
+---
+
+## 2. Domain expertise
+
+Choose the functional form of your prior (e.g., it's Beta)
+
+Interview a domain expert to determine key characteristics of the distribution, then solve the system of equations
+<br>
+
+### Example
+Through prior elicitation you determine the following information
+
+- The researchers believe the probability of success, $p$, is equally likely to be above or below 2/3
+
+- The researchers believe there is only a 5% chance that $p > 0.9$
+
+
+---
+
+## Specifying quantiles
+
+- The researchers believe the probability of success, $p$, is equally likely to be above or below 2/3
+
+- The researchers believe there is only a 5% chance that $p > 0.9$
+
+
+```{r message=FALSE}
+library(ProbBayes)
+beta.select(
+  # x = value of quantile, p = what quantile
+  list(x = 2/3, p = 0.5),
+  list(x = 0.9, p = 0.95)
+)
+```
+
+---
+
+## Specifying other characteristics
+
+Set up a system of equations to solve with any two characteristics (not just quantiles)
+
+.left-column[
+
+## Mean
+
+## Mode
+
+## Variance
+
+]
+
+.right-column[
+$E(X) = \dfrac{a}{a+b}$
+
+${\rm mode}(X) = \dfrac{a-1}{(a-1) + (b-1)}$ if $a, b > 1$
+
+${\rm Var}(X) = \dfrac{ab}{(a+b+1)(a+b)^2}$
+]
+
+---
+
+## Another parameter solver
+
+- The researchers believe the probability of success, $p$, is **most likely** to be 2/3
+
+- The researchers believe there is only a 5% chance that $p > 0.9$
+
+.code100[
+```{r message=FALSE}
+devtools::source_gist("https://gist.github.com/aloy/e1fcefb4e04c349777f030762dfdb301")
+```
+]
+
+```{r}
+beta_solver(guess = c(2, 2), .mode = 2/3, .quantile = c(value = 0.9, p = 0.95))
+```
+
+---
+
+## Always plot your priors!
+
+.pull-left[
+```{r echo=FALSE, fig.width = 4, fig.height = 2.5, out.width = "100%"}
+library(ggthemes)
+p_grid <- data.frame(p = seq(0, 1, by = 0.001))
+ggplot(p_grid, aes(x = p)) +
+  stat_function(fun = dbeta, args = list(4.63, 2.48), aes(color = "Beta(4.63, 2.48)")) +
+  stat_function(fun = dbeta, args = list(3.126, 2.063), linetype = 2, aes(color = "Beta(3.126, 2.063)")) +
+  labs(y = "density") +
+  scale_color_colorblind("") +
+  theme_minimal() +
+  theme(legend.position = c(.2, .9))
+```
+]
+
+.pull-right[
+
+Compare what the plot shows to your prior belief
+
+Reflect on what the expert said
+
+- Is $p$ most likely 2/3 or is it the median?
+
+- The researchers believe there is only a 5% chance that $p > 0.9$
+
+]
+
+---
+class: inverse
+
+# Your turn `r (yt <- yt+1)`
+
+Set up the equations you would use to tune a Beta(a, b)  model that accurately reflects the given prior information. If you have time, use R to find the parameters.
+
+Often, there’s no single “right” answer, but rather multiple “reasonable” answers.
+
+1. A scientist has created a new test for a rare disease. They expect that the test is accurate 80% of the time with a variance of 0.05.
+
+2. Your friend tells you “I think that I have a 80% chance of getting a full night of sleep tonight, and I am pretty certain.” When pressed further, they put their chances between 70% and 90%.
+
+```{r echo=FALSE}
+countdown(5)
+```
+
+
+---
+
+## `r fa("radiation")` Be aware of prior sample sizes  `r fa("radiation")`
+
+**Posterior**: .hidden[XXXXXX] $p |Y \sim \text{Beta}(a + Y, b + n − Y)$
+
+**Posterior mean**: .hidden[XX] $\widehat{p} = w \dfrac{Y}{n} + (1-w) \dfrac{a}{a+b}$, where $w=\dfrac{n}{n+a+b}$
+
+What happens to the posterior mean if $n$ is much larger than $a+b$?
+
+<br>
+
+What happens to the posterior mean  if $a+b$ is much larger than $n$?
+
+---
+
+## What if the experts disagree?
+
+.pull-left[
+**Expert 1**:
+
+- $E(p) = 0.6$ 
+
+- ${\rm Var} (p) = .05$
+
+$\Rightarrow p \sim \text{Beta}(a = 2.28, b = 1.52)$
+]
+
+.pull-right[
+**Expert 2**
+
+- ${\rm mode} (p) =  0.8$ 
+
+- 0.9 quantile of $p$ is 0.8
+
+$\Rightarrow p \sim \text{Beta}(a = 7.2, b = 5)$
+
+]
+
+- Suppose we give expert 1 weight $w_1 = 0.6$ and expert 2 weight $w_2 = 0.4$
+
+- We can create a **mixture prior**
+
+---
+
+## Mixture prior
+
+```{r}
+p_grid <- seq(0, 1, by = 0.001)
+mix_prior <- 
+  0.6 * dbeta(p_grid, 2.28, 1.52) + 0.4 * dbeta(p_grid, 7.2, 5)
+```
+
+```{r echo=FALSE, fig.width = 4, fig.height = 2.5, out.width = "50%", fig.align='center'}
+df <- tibble(p = p_grid)
+df %>%
+  ggplot(aes(x = p)) +
+  stat_function(aes(linetype = "Expert 1", color = "Expert 1"), fun = dbeta, args = list(2.28, 1.52), n = 1000) +
+  stat_function(aes(linetype = "Expert 2", color = "Expert 2"), fun = dbeta, args = list(7.2, 5), n = 1000) +
+  geom_line(aes(x = p, y = mix_prior, linetype = "60:40 mixture", color = "60:40 mixture"), inherit.aes = FALSE) +
+  labs(x = expression(p), y = "density") +
+  theme_minimal() +
+  scale_color_colorblind("") +
+  scale_linetype_discrete("") +
+  theme(legend.position = c(.85, .9))
+```
+
+
+
+---
+
+## Sanity check: Prior predictive distributions
+
+Simulate data implied by your prior specification to see if it seems reasonable
+
+Example: Blindsight continued
+
+.code100[
+```{r}
+prior_p_sims <- rbeta(1e5, shape1 = 5.268, shape2 = 2.634)  # Draw 1e5 ps from prior
+prior_ys     <- rbinom(1e5, size = 17, prob = prior_p_sims) # Draw one y for each p
+```
+]
+
+```{r fig.width = 4, fig.height = 2.5, fig.align='center', echo=FALSE, warning=FALSE, out.width = "40%"}
+ggplot(data.frame(x = prior_ys)) +
+  geom_bar(mapping = aes(x = x), width = .5, alpha = 0.7) +
+  labs(x = "Y") +
+  scale_x_continuous(breaks = -1:18, minor_breaks = NULL, limits = c(-.25, 18)) +
+  theme_minimal()
+```
+
+<!-- --- -->
+<!-- class: inverse, middle -->
+
+<!-- .big-text[Weakly-informative priors] -->
+
+<!-- --- -->
+
+<!-- ## 1. Reference priors -->
+
+<!-- Many definitions: -->
+
+<!-- - Conventional or default choice (Kass and Wasserman, 1996) -->
+
+<!-- - Representing ignorance in some formal sense (Bernardo, 1979) -->
+
+<!-- Check out the catalog of default priors -->
+
+<!-- .footnote[Kass, R. E., & Wasserman, L. (1996). The selection of prior distributions by formal rules. *Journal of the American Statistical Association*, 91(435), 1343-1370. <br> <br> Bernardo, J. (1979). Reference Posterior Distributions for Bayesian Inference. *Journal of the Royal Statistical Society. Series B (Methodological)*, 41(2), 113-14.] -->
+
+
+<!-- --- -->
+
+<!-- ## 2. Vauge/weakly informative priors -->
+
+<!-- > [A] prior which is dominated by the likelihood is one which does not change very much over the region in which the likelihood is appreciable and does not assume large values outside that range."  -->
+<!-- > -->
+<!-- > For such a prior distribution we can approximate the result of Bayes’ formula (theorem) by substituting a constant for the prior distribution. -->
+<!-- > -->
+<!-- > -Box and Tiao (1973) -->
+
+<!-- .footnote[Box, G. E., & Tiao, G. C. (1973). *Bayesian inference in statistical analysis*.] -->
+
+
+---
+class: inverse, middle
+
+.big-text[Sensitivity analysis]
+
+---
+
+## Sensitivity analysis
+
+Any time informative priors are used you should conduct a sensitivity analysis
+
+- Compare the posterior for several priors
+
+- Describe how the posterior changes
+
+- Reflect on the impact
+
+It's about transparency
+
+- many justifiable analyses are tried, and all of them are described.
+
+---
+background-image: url(img/sensitivity_analysis_example.jpeg)
+background-position: left
+background-size: 50%
+
+.pull-right[
+## Example
+
+- Compared 6 different prior distributions
+
+- Posterior distributions similar for 3-4 priors
+
+- Posterior strikingly different for 1 prior
+
+.footnote[Hiance A, Chevret S, Lévy V. [A practical approach for eliciting expert prior beliefs about cancer survival in phase III randomized trial.](https://doi.org/10.1016/j.jclinepi.2008.04.009) *J Clin Epidemiol*. 2009 Apr;62(4):431-437.e2.]
+]
+
 

@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>Selecting reasonable prior distributions</title>
+    <title>Tuning beta prior distributions</title>
     <meta charset="utf-8" />
     <meta name="author" content="Stat 340: Bayesian Statistics" />
     <script src="libs/header-attrs/header-attrs.js"></script>
     <link href="libs/remark-css/default.css" rel="stylesheet" />
     <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/countdown/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown/countdown.js"></script>
     <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
     <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
   </head>
@@ -19,20 +21,385 @@
 class: title-slide, left, middle
 
 
-# Selecting reasonable prior distributions
+# Tuning beta prior distributions
 
 ### Stat 340: Bayesian Statistics
 
 ---
 class: middle
 
-# 1. Types of priors
+# Informative prior distributions
 
-# 2. Using prior information
+# 1. Data augmentation
+
+# 2. Using domain expertise
 
 # 3. Sensitivity to priors
 
-# (Problem topics XX)
+# (Problem topics 1 &amp; 5)
+
+---
+class: inverse 
+
+# Your turn 1
+
+Work through the Bechdel Test prior elicitation example.
+
+Discuss ideas with your neighbors
+
+Explore the use of a few functions in the `{bayesrule}` R package
+
+- `plot_beta`
+
+- `plot_beta_binomial`
+
+- `summarize_beta_binomial`
+
+<div class="countdown" id="timer_614a4e23" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">10</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+.footnote[Run `install.packages("bayesrules")` first if working on your own computer.]
+
+---
+class: inverse, middle
+
+.big-text[Informative priors]
+
+---
+
+## 1. Data augmentation priors
+
+.left-column[
+
+## Assumption
+
+## Likelihood
+
+## Prior
+
+## Posterior
+
+]
+
+.right-column[
+
+
+we have *n* independent and identically distributed (iid) success/failure trials&lt;br&gt;
+
+
+`\(Y|p \sim \text{Binomial}(n, p)\)` &lt;br&gt; &lt;br&gt;
+
+`\(p \in [0, 1]\)`, so Beta(*a*, *b*) is a good choice&lt;br&gt; &lt;br&gt;
+
+`\(p |Y \sim \text{Beta}(a + Y, b + n − Y)\)` &lt;br&gt;
+
+`\(a =\)` prior successes; `\(b =\)` prior failures
+
+
+]
+
+---
+
+## 2. Domain expertise
+
+Choose the functional form of your prior (e.g., it's Beta)
+
+Interview a domain expert to determine key characteristics of the distribution, then solve the system of equations
+&lt;br&gt;
+
+### Example
+Through prior elicitation you determine the following information
+
+- The researchers believe the probability of success, `\(p\)`, is equally likely to be above or below 2/3
+
+- The researchers believe there is only a 5% chance that `\(p &gt; 0.9\)`
+
+
+---
+
+## Specifying quantiles
+
+- The researchers believe the probability of success, `\(p\)`, is equally likely to be above or below 2/3
+
+- The researchers believe there is only a 5% chance that `\(p &gt; 0.9\)`
+
+
+
+```r
+library(ProbBayes)
+beta.select(
+  # x = value of quantile, p = what quantile
+  list(x = 2/3, p = 0.5),
+  list(x = 0.9, p = 0.95)
+)
+```
+
+```
+## [1] 4.63 2.48
+```
+
+---
+
+## Specifying other characteristics
+
+Set up a system of equations to solve with any two characteristics (not just quantiles)
+
+.left-column[
+
+## Mean
+
+## Mode
+
+## Variance
+
+]
+
+.right-column[
+`\(E(X) = \dfrac{a}{a+b}\)`
+
+`\({\rm mode}(X) = \dfrac{a-1}{(a-1) + (b-1)}\)` if `\(a, b &gt; 1\)`
+
+`\({\rm Var}(X) = \dfrac{ab}{(a+b+1)(a+b)^2}\)`
+]
+
+---
+
+## Another parameter solver
+
+- The researchers believe the probability of success, `\(p\)`, is **most likely** to be 2/3
+
+- The researchers believe there is only a 5% chance that `\(p &gt; 0.9\)`
+
+.code100[
+
+```r
+devtools::source_gist("https://gist.github.com/aloy/e1fcefb4e04c349777f030762dfdb301")
+```
+]
+
+
+```r
+beta_solver(guess = c(2, 2), .mode = 2/3, .quantile = c(value = 0.9, p = 0.95))
+```
+
+```
+## Loading required package: BB
+```
+
+```
+## $par
+## [1] 3.126138 2.063069
+## 
+## $residual
+## [1] 2.938904e-08
+## 
+## $fn.reduction
+## [1] 1.005782e-05
+## 
+## $feval
+## [1] 90
+## 
+## $iter
+## [1] 20
+## 
+## $convergence
+## [1] 0
+## 
+## $message
+## [1] "Successful convergence"
+## 
+## $cpar
+## method      M     NM 
+##      2     50      1
+```
+
+---
+
+## Always plot your priors!
+
+.pull-left[
+&lt;img src="04-prior-elicitation_files/figure-html/unnamed-chunk-5-1.svg" width="100%" /&gt;
+]
+
+.pull-right[
+
+Compare what the plot shows to your prior belief
+
+Reflect on what the expert said
+
+- Is `\(p\)` most likely 2/3 or is it the median?
+
+- The researchers believe there is only a 5% chance that `\(p &gt; 0.9\)`
+
+]
+
+---
+class: inverse
+
+# Your turn 2
+
+Set up the equations you would use to tune a Beta(a, b)  model that accurately reflects the given prior information. If you have time, use R to find the parameters.
+
+Often, there’s no single “right” answer, but rather multiple “reasonable” answers.
+
+1. A scientist has created a new test for a rare disease. They expect that the test is accurate 80% of the time with a variance of 0.05.
+
+2. Your friend tells you “I think that I have a 80% chance of getting a full night of sleep tonight, and I am pretty certain.” When pressed further, they put their chances between 70% and 90%.
+
+<div class="countdown" id="timer_614a4c61" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">05</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+---
+
+## <svg aria-hidden="true" role="img" viewBox="0 0 496 512" style="height:1em;width:0.97em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M328.2 255.8h151.6c9.1 0 16.8-7.7 16.2-16.8-5.1-75.8-44.4-142.2-102.5-184.2-7.4-5.3-17.9-2.9-22.7 4.8L290.4 188c22.6 14.3 37.8 39.2 37.8 67.8zm-37.8 67.7c-12.3 7.7-26.8 12.4-42.4 12.4-15.6 0-30-4.7-42.4-12.4L125.2 452c-4.8 7.7-2.4 18.1 5.6 22.4C165.7 493.2 205.6 504 248 504s82.3-10.8 117.2-29.6c8-4.3 10.4-14.8 5.6-22.4l-80.4-128.5zM248 303.8c26.5 0 48-21.5 48-48s-21.5-48-48-48-48 21.5-48 48 21.5 48 48 48zm-231.8-48h151.6c0-28.6 15.2-53.5 37.8-67.7L125.2 59.7c-4.8-7.7-15.3-10.2-22.7-4.8C44.4 96.9 5.1 163.3 0 239.1c-.6 9 7.1 16.7 16.2 16.7z"/></svg> Be aware of prior sample sizes  <svg aria-hidden="true" role="img" viewBox="0 0 496 512" style="height:1em;width:0.97em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M328.2 255.8h151.6c9.1 0 16.8-7.7 16.2-16.8-5.1-75.8-44.4-142.2-102.5-184.2-7.4-5.3-17.9-2.9-22.7 4.8L290.4 188c22.6 14.3 37.8 39.2 37.8 67.8zm-37.8 67.7c-12.3 7.7-26.8 12.4-42.4 12.4-15.6 0-30-4.7-42.4-12.4L125.2 452c-4.8 7.7-2.4 18.1 5.6 22.4C165.7 493.2 205.6 504 248 504s82.3-10.8 117.2-29.6c8-4.3 10.4-14.8 5.6-22.4l-80.4-128.5zM248 303.8c26.5 0 48-21.5 48-48s-21.5-48-48-48-48 21.5-48 48 21.5 48 48 48zm-231.8-48h151.6c0-28.6 15.2-53.5 37.8-67.7L125.2 59.7c-4.8-7.7-15.3-10.2-22.7-4.8C44.4 96.9 5.1 163.3 0 239.1c-.6 9 7.1 16.7 16.2 16.7z"/></svg>
+
+**Posterior**: .hidden[XXXXXX] `\(p |Y \sim \text{Beta}(a + Y, b + n − Y)\)`
+
+**Posterior mean**: .hidden[XX] `\(\widehat{p} = w \dfrac{Y}{n} + (1-w) \dfrac{a}{a+b}\)`, where `\(w=\dfrac{n}{n+a+b}\)`
+
+What happens to the posterior mean if `\(n\)` is much larger than `\(a+b\)`?
+
+&lt;br&gt;
+
+What happens to the posterior mean  if `\(a+b\)` is much larger than `\(n\)`?
+
+---
+
+## What if the experts disagree?
+
+.pull-left[
+**Expert 1**:
+
+- `\(E(p) = 0.6\)` 
+
+- `\({\rm Var} (p) = .05\)`
+
+`\(\Rightarrow p \sim \text{Beta}(a = 2.28, b = 1.52)\)`
+]
+
+.pull-right[
+**Expert 2**
+
+- `\({\rm mode} (p) =  0.8\)` 
+
+- 0.9 quantile of `\(p\)` is 0.8
+
+`\(\Rightarrow p \sim \text{Beta}(a = 7.2, b = 5)\)`
+
+]
+
+- Suppose we give expert 1 weight `\(w_1 = 0.6\)` and expert 2 weight `\(w_2 = 0.4\)`
+
+- We can create a **mixture prior**
+
+---
+
+## Mixture prior
+
+
+```r
+p_grid &lt;- seq(0, 1, by = 0.001)
+mix_prior &lt;- 
+  0.6 * dbeta(p_grid, 2.28, 1.52) + 0.4 * dbeta(p_grid, 7.2, 5)
+```
+
+&lt;img src="04-prior-elicitation_files/figure-html/unnamed-chunk-8-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+
+---
+
+## Sanity check: Prior predictive distributions
+
+Simulate data implied by your prior specification to see if it seems reasonable
+
+Example: Blindsight continued
+
+.code100[
+
+```r
+prior_p_sims &lt;- rbeta(1e5, shape1 = 5.268, shape2 = 2.634)  # Draw 1e5 ps from prior
+prior_ys     &lt;- rbinom(1e5, size = 17, prob = prior_p_sims) # Draw one y for each p
+```
+]
+
+&lt;img src="04-prior-elicitation_files/figure-html/unnamed-chunk-10-1.svg" width="40%" style="display: block; margin: auto;" /&gt;
+
+&lt;!-- --- --&gt;
+&lt;!-- class: inverse, middle --&gt;
+
+&lt;!-- .big-text[Weakly-informative priors] --&gt;
+
+&lt;!-- --- --&gt;
+
+&lt;!-- ## 1. Reference priors --&gt;
+
+&lt;!-- Many definitions: --&gt;
+
+&lt;!-- - Conventional or default choice (Kass and Wasserman, 1996) --&gt;
+
+&lt;!-- - Representing ignorance in some formal sense (Bernardo, 1979) --&gt;
+
+&lt;!-- Check out the catalog of default priors --&gt;
+
+&lt;!-- .footnote[Kass, R. E., &amp; Wasserman, L. (1996). The selection of prior distributions by formal rules. *Journal of the American Statistical Association*, 91(435), 1343-1370. &lt;br&gt; &lt;br&gt; Bernardo, J. (1979). Reference Posterior Distributions for Bayesian Inference. *Journal of the Royal Statistical Society. Series B (Methodological)*, 41(2), 113-14.] --&gt;
+
+
+&lt;!-- --- --&gt;
+
+&lt;!-- ## 2. Vauge/weakly informative priors --&gt;
+
+&lt;!-- &gt; [A] prior which is dominated by the likelihood is one which does not change very much over the region in which the likelihood is appreciable and does not assume large values outside that range."  --&gt;
+&lt;!-- &gt; --&gt;
+&lt;!-- &gt; For such a prior distribution we can approximate the result of Bayes’ formula (theorem) by substituting a constant for the prior distribution. --&gt;
+&lt;!-- &gt; --&gt;
+&lt;!-- &gt; -Box and Tiao (1973) --&gt;
+
+&lt;!-- .footnote[Box, G. E., &amp; Tiao, G. C. (1973). *Bayesian inference in statistical analysis*.] --&gt;
+
+
+---
+class: inverse, middle
+
+.big-text[Sensitivity analysis]
+
+---
+
+## Sensitivity analysis
+
+Any time informative priors are used you should conduct a sensitivity analysis
+
+- Compare the posterior for several priors
+
+- Describe how the posterior changes
+
+- Reflect on the impact
+
+It's about transparency
+
+- many justifiable analyses are tried, and all of them are described.
+
+---
+background-image: url(img/sensitivity_analysis_example.jpeg)
+background-position: left
+background-size: 50%
+
+.pull-right[
+## Example
+
+- Compared 6 different prior distributions
+
+- Posterior distributions similar for 3-4 priors
+
+- Posterior strikingly different for 1 prior
+
+.footnote[Hiance A, Chevret S, Lévy V. [A practical approach for eliciting expert prior beliefs about cancer survival in phase III randomized trial.](https://doi.org/10.1016/j.jclinepi.2008.04.009) *J Clin Epidemiol*. 2009 Apr;62(4):431-437.e2.]
+]
+
 
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>

@@ -1,0 +1,114 @@
+---
+geometry: margin = 1in
+output: pdf_document
+---
+
+\pagenumbering{gobble}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.height = 3,
+                      fig.width = 4,
+                      fig.align = 'center',
+                      eval = FALSE)
+
+yt <- 0
+```
+
+# Prior elicitation
+## Stat 340, Fall 2021
+
+\bigskip
+
+## Your turn `r (yt <- yt+1)`: Tuning your prior belief
+
+**Note:** You can find an `.Rmd` file for this activity on the course webpage under today's date.
+
+
+### Background
+
+In Alison Bechdel's 1985 comic strip The Rule, a character states that they only see a movie if it satisfies the following three rules:
+
+- the movie has to have at least two women in it;
+- these two women talk to each other; and
+- they talk about something besides a man.
+
+A movie that satisfies these criteria is said to have passed the "Bechdel Test".
+
+
+
+### Building a prior model
+
+1. What percentage of all recent movies do you think pass the Bechdel test?
+
+\
+
+2. If you were to make a model for $p$, the proportion of recent movies that would pass the Bechdel test, what would it look like?    
+
+    - Where would it be centered (approximately)?
+    - Would it be symmetric or skewed?
+    - How sure are you about $p$?
+
+\
+\
+
+3. Modify the parameters in the `plot_beta()` function below to tune and plot your prior distribution for $p$, the proportion of recent movies that pass the Bechdel test.
+
+    Note: It may take some playing around before you land on a plot that is close to your prior understanding of $\pi$. It is OK (and encouraged) to experiment and try multiple values for the parameters! It is also OK if your prior is different from the priors of your classmates.
+
+
+    ```{r}
+# Change up the alpha and beta values (both must be positive)
+library(bayesrules)
+plot_beta(alpha = 2, beta = 2) 
+```
+
+\
+
+
+4. You just collected some data on 20 recent movies. It turns out that 9 of these pass the Bechdel test. What's the posterior distribution of $p$?
+
+\ 
+\
+
+5. To quickly plot the prior, likelihood, and posterior you can use the `plot_beta_binomial()` function in the `bayesrules` package. Modify the `plot_beta_binomial()` function below to plot your prior, the likelihood, and the posterior:
+
+    ```{r}
+plot_beta_binomial(alpha = 2, beta = 2, y = 0, n = 2)
+```
+
+6. In addition to plotting, we can also describe the prior and posterior models of $p$ with numeric summaries using the `summarize_beta_binomial()` function found in the `{bayesrules}` package.. Modify the `summarize_beta_binomial()` below to incorporate information on your prior and data that 9 out of 20 movies passed the Bechdel test.
+
+    ```{r}
+summarize_beta_binomial(alpha = 2, beta = 2, y = 0, n = 2)
+```
+
+    What does each number tell us? Is your posterior mean closer to the prior mean or the sample proportion?
+
+\ 
+
+\ 
+    
+
+## Your turn `r (yt <- yt+1)`: Using domain expertise
+
+Set up the equations you would use to tune a Beta(a, b)  model that accurately reflects the given prior information. If you have time, use R to find the parameters.
+
+Often, there’s no single “right” answer, but rather multiple “reasonable” answers.
+
+1. A scientist has created a new test for a rare disease. They expect that the test is accurate 80% of the time with a variance of 0.05.
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+2. Your friend tells you “I think that I have a 80% chance of getting a full night of sleep tonight, and I am pretty certain.” When pressed further, they put their chances between 70% and 90%.
+
+
+

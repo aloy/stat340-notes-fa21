@@ -414,3 +414,15 @@ hr {
   opacity: 1; /* default: 0.5 */
   position: absolute;
 }
+
+.code80 .remark-code {
+  font-size: 80%;
+}
+
+.code90 .remark-code {
+  font-size: 90%;
+}
+
+.code100 .remark-code {
+  font-size: 100%;
+}
