@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Weak priors and model checking</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+
+
+# Weak priors and model checking
+
+### Stat 340: Bayesian Statistics
+
+---
+class: middle
+
+
+# 1. Weakly informative prior distributions
+
+# 2. Model checking
+
+# (Problem topics 1 &amp; 5)
+
+---
+
+## Example
+
+
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.&lt;br&gt;
+
+RS of size `\(n=10\)` taken; `\(Y = 2\)` positive tests
+&lt;br&gt;&lt;br&gt;
+
+
+`\(Y|\theta \sim \text{Binomial}(n=10, \theta)\)` &lt;br&gt; &lt;br&gt;
+
+Based on prior testing, `\(\text{Beta}(a=3, b=23)\)`&lt;br&gt; 
+
+`\(\theta |Y \sim \text{Beta}(5, 31)\)`
+
+]
+
+---
+
+## Example
+
+.left-narrow[
+- Posterior `\(\propto\)` Prior `\(\times\)` Likelihood
+
+- Posterior can't have density anywhere prior density is 0
+
+- If prior "dominates" the likelihood, then the data have very little to contribute to the analysis!
+
+]
+
+.right-wide[
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-1-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+
+## 1. Vauge/weakly informative priors
+
+&gt; [A] prior which is dominated by the likelihood is one which does not change very much over the region in which the likelihood is appreciable and does not assume large values outside that range."
+&gt;
+&gt; For such a prior distribution we can approximate the result of Bayes’ formula (theorem) by substituting a constant for the prior distribution.
+&gt;
+&gt; -Box and Tiao (1973)
+
+.footnote[Box, G. E., &amp; Tiao, G. C. (1973). *Bayesian inference in statistical analysis*.]
+
+
+---
+
+## A weak prior
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.&lt;br&gt;
+
+RS of size `\(n=10\)` taken; `\(Y = 2\)` positive tests &lt;br&gt;&lt;br&gt;
+
+`\(Y|\theta \sim \text{Binomial}(n=10, \theta)\)` &lt;br&gt; &lt;br&gt;
+
+No prior info so analyst sets `\(\text{Beta}(a=1/10, b=1/10)\)`&lt;br&gt; 
+
+`\(\theta |Y \sim \text{Beta}(2.1, 10.1)\)`
+
+]
+
+---
+
+## A weak prior
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-2-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## A flat prior
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.&lt;br&gt;
+
+RS of size `\(n=10\)` taken; `\(Y = 2\)` positive tests
+&lt;br&gt; &lt;br&gt;
+
+`\(Y|\theta \sim \text{Binomial}(n=10, \theta)\)` &lt;br&gt; &lt;br&gt;
+
+No prior info so analyst sets `\(\text{Beta}(a=1, b=1)\)`
+&lt;br&gt; 
+
+
+`\(\theta |Y \sim \text{Beta}(3, 11)\)`
+
+
+]
+
+---
+## A flat prior
+
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-3-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## 2. Reference priors
+
+Many definitions:
+
+- Conventional or default choice (Kass and Wasserman, 1996)
+
+- Representing ignorance in some formal sense (Bernardo, 1979)
+
+Check out the [catalog of default priors](http://www.stats.org.uk/priors/noninformative/YangBerger1998.pdf)
+
+.footnote[Kass, R. E., &amp; Wasserman, L. (1996). The selection of prior distributions by formal rules. *Journal of the American Statistical Association*, 91(435), 1343-1370. &lt;br&gt; &lt;br&gt; Bernardo, J. (1979). Reference Posterior Distributions for Bayesian Inference. *Journal of the Royal Statistical Society. Series B (Methodological)*, 41(2), 113-14.]
+
+---
+
+## Binomial reference prior
+
+.left-column2[
+
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+RS of size `\(n=10\)` taken; `\(Y = 2\)` positive tests &lt;br&gt;&lt;br&gt;
+
+`\(Y|\theta \sim \text{Binomial}(n=10, \theta)\)` &lt;br&gt; 
+
+Analyst want to be "objective", so uses reference prior `\(\theta \sim \text{Beta}(1/2, 1/2)\)`&lt;br&gt; 
+
+`\(\theta |Y \sim \text{Beta}(2.5, 10.5)\)`
+
+]
+
+---
+
+## Binomial reference prior
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-4-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+class: inverse, middle
+
+.big-text[Model checking]
+
+---
+
+## Posterior predictive checking
+
+.box[
+**Key idea**
+
+If a model fits, then if should be able to generate data that look similar to the observed data]
+
+--
+
+- Draw new samples of the same size from the model
+
+- Are there systematic differences?
+ 
+---
+
+
+## Example
+
+.pull-left[
+
+### Observed data
+
+`\(Y=7\)`
+
+
+
+### Model
+
+`\begin{align*}
+Y|p &amp;\sim {\rm Binomial}(20,p)\\
+p &amp;\sim {\rm Beta}(1, 1)\\
+\Longrightarrow p | Y &amp;\sim {\rm Beta}(8, 14)
+\end{align*}`
+
+]
+
+--
+
+.pull-right[
+
+Are there systematic differences?
+
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-5-1.svg" width="100%" /&gt;
+
+]
+
+---
+
+## Example (continued)
+
+.pull-left[
+
+### Observed data
+
+Looking at the data, you see a temporal pattern
+
+
+.remark-code-line[1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 0 0 0]
+
+
+
+### Model
+
+`\begin{align*}
+Y|p &amp;\sim {\rm Binomial}(20,p)\\
+p &amp;\sim {\rm Beta}(1, 1)\\
+\Longrightarrow p | Y &amp;\sim {\rm Beta}(8, 14)
+\end{align*}`
+
+]
+
+--
+
+.pull-right[
+Are there systematic differences?
+
+
+
+.remark-code-line[0 1 0 1 1 0 0 0 0 0 0 1 0 1 1 0 0 0 0 0]
+
+.remark-code-line[0 0 0 0 1 0 0 1 1 1 0 1 1 1 0 0 1 1 0 0]
+
+.remark-code-line[1 0 0 0 0 1 0 0 1 1 1 1 1 0 1 1 1 0 1 0]
+
+.remark-code-line[0 0 0 1 0 1 0 1 0 1 1 0 1 0 1 1 0 0 0 1]
+
+.remark-code-line[0 0 0 1 1 1 1 0 1 0 1 1 0 1 0 0 0 1 1 0]
+
+
+]
+
+---
+
+## Example  (continued)
+
+### Observed data: .hidden[XX].remark-code-line[1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 0 0 0]
+
+.pull-left[
+- Consider  `\(T (y) =\)` number of switches between 0 and 1 in the sequence. 
+
+- Calculate for `\(T (y, p)\)` for replicate data sets, `\({\bf y}_{\rm rep}\)`
+
+- Calculate for `\(T (y, p)\)` for observed data set
+
+- Approximate `\(P(T({\bf y}_{\rm rep}) \ge T({\bf y}))\)`
+]
+
+--
+
+.pull-right[
+
+&lt;img src="05-weak-priors_files/figure-html/unnamed-chunk-7-1.svg" width="100%" /&gt;
+
+.center[
+`\(P(T({\bf y}_{\rm rep}) \ge T({\bf y})) \approx 0.9828\)`
+]
+
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,432 @@
+---
+title: "Weak priors and model checking"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(ggplot2)
+library(countdown)
+library(fontawesome)
+library(xaringanthemer)
+library(ggthemes)
+library(janitor)
+library(bayesrules)
+yt <- 0
+```
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+
+# 1. Weakly informative prior distributions
+
+# 2. Model checking
+
+# (Problem topics 1 & 5)
+
+---
+
+## Example
+
+
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.<br>
+
+RS of size $n=10$ taken; $Y = 2$ positive tests
+<br><br>
+
+
+$Y|\theta \sim \text{Binomial}(n=10, \theta)$ <br> <br>
+
+Based on prior testing, $\text{Beta}(a=3, b=23)$<br> 
+
+$\theta |Y \sim \text{Beta}(5, 31)$
+
+]
+
+---
+
+## Example
+
+.left-narrow[
+- Posterior $\propto$ Prior $\times$ Likelihood
+
+- Posterior can't have density anywhere prior density is 0
+
+- If prior "dominates" the likelihood, then the data have very little to contribute to the analysis!
+
+]
+
+.right-wide[
+```{r echo=FALSE, fig.height = 2.5, fig.width=5, fig.align='center', out.width = "95%"}
+plot_beta_binomial(3, 23, y = 2, n = 10) + 
+  labs(x = expression(theta))
+```
+]
+
+---
+
+
+## 1. Vauge/weakly informative priors
+
+> [A] prior which is dominated by the likelihood is one which does not change very much over the region in which the likelihood is appreciable and does not assume large values outside that range."
+>
+> For such a prior distribution we can approximate the result of Bayes’ formula (theorem) by substituting a constant for the prior distribution.
+>
+> -Box and Tiao (1973)
+
+.footnote[Box, G. E., & Tiao, G. C. (1973). *Bayesian inference in statistical analysis*.]
+
+
+---
+
+## A weak prior
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.<br>
+
+RS of size $n=10$ taken; $Y = 2$ positive tests <br><br>
+
+$Y|\theta \sim \text{Binomial}(n=10, \theta)$ <br> <br>
+
+No prior info so analyst sets $\text{Beta}(a=1/10, b=1/10)$<br> 
+
+$\theta |Y \sim \text{Beta}(2.1, 10.1)$
+
+]
+
+---
+
+## A weak prior
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+```{r echo=FALSE, fig.height = 2.5, fig.width=5, fig.align='center', out.width = "95%"}
+plot_beta_binomial(1/10, 1/10, y = 2, n = 10) + 
+  labs(x = expression(theta))
+```
+]
+
+---
+
+## A flat prior
+
+.left-column2[
+
+#### Setting
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+
+Assessing proportion of U.S. transportation industry workers who use drugs on the job.<br>
+
+RS of size $n=10$ taken; $Y = 2$ positive tests
+<br> <br>
+
+$Y|\theta \sim \text{Binomial}(n=10, \theta)$ <br> <br>
+
+No prior info so analyst sets $\text{Beta}(a=1, b=1)$
+<br> 
+
+
+$\theta |Y \sim \text{Beta}(3, 11)$
+
+
+]
+
+---
+## A flat prior
+
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+```{r echo=FALSE, fig.height = 2.5, fig.width=5, fig.align='center', out.width = "95%"}
+plot_beta_binomial(1, 1, y = 2, n = 10) + 
+  labs(x = expression(theta))
+```
+]
+
+---
+
+## 2. Reference priors
+
+Many definitions:
+
+- Conventional or default choice (Kass and Wasserman, 1996)
+
+- Representing ignorance in some formal sense (Bernardo, 1979)
+
+Check out the [catalog of default priors](http://www.stats.org.uk/priors/noninformative/YangBerger1998.pdf)
+
+.footnote[Kass, R. E., & Wasserman, L. (1996). The selection of prior distributions by formal rules. *Journal of the American Statistical Association*, 91(435), 1343-1370. <br> <br> Bernardo, J. (1979). Reference Posterior Distributions for Bayesian Inference. *Journal of the Royal Statistical Society. Series B (Methodological)*, 41(2), 113-14.]
+
+---
+
+## Binomial reference prior
+
+.left-column2[
+
+
+#### Data
+
+#### Likelihood
+
+#### Prior
+
+#### Posterior
+
+]
+
+.right-column2[
+
+RS of size $n=10$ taken; $Y = 2$ positive tests <br><br>
+
+$Y|\theta \sim \text{Binomial}(n=10, \theta)$ <br> 
+
+Analyst want to be "objective", so uses reference prior $\theta \sim \text{Beta}(1/2, 1/2)$<br> 
+
+$\theta |Y \sim \text{Beta}(2.5, 10.5)$
+
+]
+
+---
+
+## Binomial reference prior
+
+.left-narrow[
+- Likelihood dominates the prior
+
+- The data almost entirely determine the posterior
+]
+
+.right-wide[
+```{r echo=FALSE, fig.height = 2.5, fig.width=5, fig.align='center', out.width = "95%"}
+plot_beta_binomial(1/2, 1/2, y = 2, n = 10) + 
+  labs(x = expression(theta))
+```
+]
+
+
+---
+class: inverse, middle
+
+.big-text[Model checking]
+
+---
+
+## Posterior predictive checking
+
+.box[
+**Key idea**
+
+If a model fits, then if should be able to generate data that look similar to the observed data]
+
+--
+
+- Draw new samples of the same size from the model
+
+- Are there systematic differences?
+ 
+---
+
+
+## Example
+
+.pull-left[
+
+### Observed data
+
+$Y=7$
+
+
+
+### Model
+
+\begin{align*}
+Y|p &\sim {\rm Binomial}(20,p)\\
+p &\sim {\rm Beta}(1, 1)\\
+\Longrightarrow p | Y &\sim {\rm Beta}(8, 14)
+\end{align*}
+
+]
+
+--
+
+.pull-right[
+
+Are there systematic differences?
+
+```{r echo=FALSE, fig.width = 4.5, fig.height = 3, out.width = "100%"}
+set.seed(456780)
+S <- 1e4
+p_draws <- rbeta(S, 8, 14)
+y_draws <- rbinom(S, size = 20, prob = p_draws)
+y_tbl <- janitor::tabyl(y_draws)
+ggplot(y_tbl, aes(x = y_draws, y = n)) +
+  geom_col(width = 0.25) +
+  labs(x = "Y", y ="Posterior probability") +
+  annotate("point", x = 7, y = 0, colour = "orange", size = 5) +
+  annotate("text", x = 7, y = -100, colour = "orange", label = "Y=7")
+```
+
+]
+
+---
+
+## Example (continued)
+
+.pull-left[
+
+### Observed data
+
+Looking at the data, you see a temporal pattern
+
+
+.remark-code-line[1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 0 0 0]
+
+
+
+### Model
+
+\begin{align*}
+Y|p &\sim {\rm Binomial}(20,p)\\
+p &\sim {\rm Beta}(1, 1)\\
+\Longrightarrow p | Y &\sim {\rm Beta}(8, 14)
+\end{align*}
+
+]
+
+--
+
+.pull-right[
+Are there systematic differences?
+
+```{r echo=FALSE}
+p5 <- p_draws[1:5]
+y_list <- lapply(1:5, function(i) rbinom(n = 20, size = 1, prob = p5[i]))
+```
+
+.remark-code-line[0 1 0 1 1 0 0 0 0 0 0 1 0 1 1 0 0 0 0 0]
+
+.remark-code-line[0 0 0 0 1 0 0 1 1 1 0 1 1 1 0 0 1 1 0 0]
+
+.remark-code-line[1 0 0 0 0 1 0 0 1 1 1 1 1 0 1 1 1 0 1 0]
+
+.remark-code-line[0 0 0 1 0 1 0 1 0 1 1 0 1 0 1 1 0 0 0 1]
+
+.remark-code-line[0 0 0 1 1 1 1 0 1 0 1 1 0 1 0 0 0 1 1 0]
+
+
+]
+
+---
+
+## Example  (continued)
+
+### Observed data: .hidden[XX].remark-code-line[1 1 0 0 0 0 0 1 1 1 1 1 0 0 0 0 0 0 0 0]
+
+.pull-left[
+- Consider  $T (y) =$ number of switches between 0 and 1 in the sequence. 
+
+- Calculate for $T (y, p)$ for replicate data sets, ${\bf y}_{\rm rep}$
+
+- Calculate for $T (y, p)$ for observed data set
+
+- Approximate $P(T({\bf y}_{\rm rep}) \ge T({\bf y}))$
+]
+
+--
+
+.pull-right[
+
+```{r echo=FALSE, fig.width = 4.5, fig.height = 3, out.width = "100%"}
+y_sims <-lapply(seq_along(p_draws), function(i) rbinom(n = 20, size = 1, prob = p_draws[i]))
+t_rep <- sapply(y_sims, function(x) sum(abs(diff(x))))
+t_rep_df <- tabyl(t_rep)
+
+ggplot(t_rep_df, aes(x = t_rep, y = n)) +
+  geom_col(width = 0.25) +
+  labs(x = "T(y)", y ="Posterior probability") +
+  annotate("point", x = 3, y = 0, colour = "orange", size = 4) +
+  annotate("text", x = 3, y = -100, colour = "orange", label = "T(y)=3")
+```
+
+.center[
+$P(T({\bf y}_{\rm rep}) \ge T({\bf y})) \approx `r mean(t_rep >= 3)`$
+]
+
+]
