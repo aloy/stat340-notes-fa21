@@ -1,0 +1,279 @@
+---
+title: "Modeling measurement data"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(tidyverse)
+library(countdown)
+library(fontawesome)
+library(xaringanthemer)
+library(ggthemes)
+library(janitor)
+library(urbnmapr)
+library(bayesrules)
+
+library(here)
+votes <- read_csv(here("data", "pres_pct_change_2016_2020.csv"))
+
+yt <- 0
+```
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+
+# 1. Inference for $\mu$ with known $\sigma$
+
+# (Problem topics 1-5)
+
+---
+background-image: url(img/2020_election_map_change.png)
+background-size: 85%
+
+
+.footnote[Image source: https://www.washingtonpost.com/graphics/2020/elections/electorate-changes-2016-election-vs-2020/]
+
+---
+
+## Change in the democratic vote
+
+- How did democratic share of the two party vote change from 2016 to 2020?
+
+- MIT Election Data and Science Lab has county-level election results
+
+- We'll look at the percent change in the two-party vote
+
+    $$Y_i = 100\left(A_i / B_i - 1 \right)$$
+
+  $A_i =$ % of two-party vote cast for democrats in 2020
+    
+  $B_i =$ % of two-party vote cast for democrats in 2016
+
+
+
+.footnote[MIT Election Data and Science Lab, "County Presidential Election Returns 2000-2020", https://doi.org/10.7910/DVN/VOQCHQ, Harvard Dataverse, V9]
+
+---
+
+## EDA
+
+.left-wide[
+```{r echo=FALSE, fig.height = 3, fig.width = 4.5, fig.align='center', out.width = "98%", warning=FALSE}
+ggplot(votes, aes(x = pct_change_dem)) +
+  geom_histogram(bins = 100, fill = "navy", alpha = 0.6) +
+  labs(x = "% change in democratic vote")
+```
+]
+
+.right-narrow[
+- Normal model seems reasonable
+
+- Potential outliers
+]
+
+---
+
+## EDA
+
+```{r echo=FALSE, fig.height = 4, fig.width = 6, fig.align='center', out.width = "70%"}
+elec_map_data <- left_join(counties, votes, by = c("county_fips" = "fips"))
+
+elec_map_data %>%
+  drop_na(pct_change_dem) %>%
+  ggplot(aes(long, lat, group = group, fill = pct_change_dem)) +
+  geom_polygon(color = NA) +
+  geom_polygon(data = states, mapping = aes(long, lat, group = group),
+               fill = NA, color = "#ffffff") +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = c(.85, .05)) +
+  theme(legend.title = element_text()) +
+  labs(fill = "% change in\ndemocratic vote")
+```
+
+---
+
+## Without outliers
+
+
+```{r echo=FALSE, fig.height = 4, fig.width = 6, fig.align='center', out.width = "70%"}
+
+elec_map_data %>%
+  drop_na(pct_change_dem) %>%
+  filter(pct_change_dem < 100) %>%
+  ggplot(aes(long, lat, group = group, fill = pct_change_dem)) +
+  geom_polygon(color = NA) +
+  geom_polygon(data = states, mapping = aes(long, lat, group = group),
+               fill = NA, color = "gray80") +
+  scale_fill_gradient2() +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = c(.85, .05), panel.background = element_rect(fill = "gray90")) +
+  theme(legend.title = element_text(), legend.background = element_blank()) +
+  labs(fill = "% change in\ndemocratic vote")
+
+```
+
+---
+
+## Hypothetical sample
+
+We'll work with a hypothetical sample of 100 counties
+
+```{r echo=FALSE}
+set.seed(23537095)
+select_county <- votes %>% 
+  drop_na(pct_change_dem) %>%
+  sample_n(size = 100, replace = FALSE)
+```
+
+```{r echo=FALSE, fig.height = 3, fig.width = 4.5, fig.align='center', out.width = "50%",  warning=FALSE}
+ggplot(select_county, aes(x = pct_change_dem)) +
+  geom_histogram(bins = 20, fill = "navy", alpha = 0.6) +
+  labs(x = "% change in democratic vote")
+```
+
+
+---
+class: inverse
+
+## Your turn `r (yt <- yt + 1)`
+
+Derive the likelihood if we assume $Y_i \overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma)$
+
+Normal PDF:
+
+$$f(y) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{(y-\mu)^2}{2 \sigma^2} \right), \quad - \infty < y < \infty, \quad  - \infty < \mu < \infty, \quad \sigma > 0$$
+```{r echo=FALSE}
+countdown(2, 30)
+```
+
+---
+class: inverse
+
+## Your turn `r (yt <- yt + 1)`
+
+For simplicity, assume that $\sigma = 8$.
+
+Prior for $\mu$: $\mu \sim \mathcal{N}(\mu_0, \sigma_0)$
+
+Derive the posterior for $\mu$.
+
+```{r echo=FALSE}
+countdown(minutes = 3)
+```
+
+---
+
+## Using a weak prior
+
+Suppose we thought the election was a toss up, then a weakly informative prior would be reasonable
+
+.pull-left[
+```{r echo=FALSE, fig.height = 3, fig.width = 4.5, out.width = "100%"}
+plot_normal(0, 30)
+```
+]
+
+.pull-right[
+$\mu \sim \mathcal{N}(0, 30)$
+
+- swings to either the left or right possible
+
+- more likely to be closer to 0 (no change) than an extreme swing
+]
+
+
+---
+
+## Posterior
+
+
+```{r echo=FALSE, fig.height = 3, fig.width = 4.5, out.width = "65%", fig.align='center'}
+ys <- select_county %>% pull(pct_change_dem)
+ybar <- mean(ys)
+n <- length(ys)
+plot_normal_normal(mean = 0, sd = 30, sigma = 8, y_bar = ybar, n = n) + lims(x = c(-30, 30))
+```
+
+
+---
+
+## Bayesian hypothesis tests
+
+How do we test $H_0: \mu \le 0$ vs. $H_1: \mu > 0$?
+
+<br>
+
+<br>
+<br>
+
+--
+
+How do we test $H_0: \mu = 0$ vs. $H_1: \mu > 0$?
+
+---
+
+## Posterior predictive checks
+
+```{r}
+sigma <- 8   # known sigma
+n     <- 100 # sample size
+post_mean <- 1.96 # posterior mean
+post_sd   <- 0.64 # posterior sd
+S <- 1000  #number of sims
+
+# First draw S mus from the posterior
+mu_draws <- rnorm(S, post_mean, post_sd)
+y_draws  <- matrix(nrow = S, ncol = 100)
+
+# Then, simulate 20 observations for each mu
+for(i in 1:S) {
+  y_draws[i,] <- rnorm(100, mu_draws[i], sigma)
+}
+```
+
+---
+
+## Posterior predictive checks
+
+We need to calculate some testing function, $T(\tilde{y})$, on each replicated data set
+
+```{r}
+y_bar_sims <- rowMeans(y_draws)
+```
+
+```{r echo=FALSE, fig.width = 4.5, fig.height = 2.5, fig.align='center', warning=FALSE, message=FALSE, out.width="60%"}
+ggplot(data.frame(x = y_bar_sims), aes(x = x)) +
+  geom_histogram(alpha = 0.6, fill = "navy") +
+  geom_vline(xintercept = ybar, color = "goldenrod", size = 1) +
+  labs(x = expression(bar(Y)^rep), y= "Frequency") +
+  annotate("text", x = ybar + .5, y = 50, label = expression(bar(Y)[obs]), color = "goldenrod")
+  
+``` 
+

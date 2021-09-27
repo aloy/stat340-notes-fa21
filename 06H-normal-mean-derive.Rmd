@@ -1,0 +1,56 @@
+---
+geometry: margin = 1in
+output: pdf_document
+---
+
+\pagenumbering{gobble}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+yt <- 0
+```
+
+# Posterior derivations
+## Stat 340, Fall 2021
+
+\bigskip
+
+## Your turn `r (yt <- yt + 1)`
+
+Let $Y_{1},Y_{2},\ldots,Y_{n}$ be a random sample (i.i.d.) from the Normal distribution with PDF
+
+$$f(y) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{(y-\mu)^2}{2 \sigma^2} \right), \quad - \infty < y < \infty, \quad  - \infty < \mu < \infty, \quad \sigma > 0$$
+
+Derive the likelihood, $f(y_1, \ldots, y_n | \mu, \sigma)$.
+
+\vspace{2in}
+
+## Your turn `r (yt <- yt + 1)`
+
+To simplify the derivation and make this a univariate problem, assume that $\sigma = 8$. If we use specify $\mathcal{N}(\mu_0, \sigma_0)$ (where $\mu_0$ and $\sigma_0$ are known constants) as our prior for $\mu$, then what is the posterior of $\mu$?
+
+
+
+
+
+\clearpage
+
+## Example: Poisson-Gamma model
+
+Let $X_{1},X_{2},\ldots,X_{n}$ be a random sample from the Poisson distribution with PMF 
+$$f(x)=\dfrac{\lambda^{x}e^{-\lambda}}{x!},\ x=0,1,2,\ldots$$
+
+1. Write down the likelihood function, $f(x_1, \ldots, x_n | \lambda)$.
+
+\vspace{1.25in}
+
+2. Suppose that you decide to use a Gamma(a,b) prior distribution for $\lambda$ with PDF
+
+    $$\pi(\lambda)=\dfrac{b^{a}}{\Gamma(a)}\lambda^{a-1}e^{-b\lambda},\ \lambda>0.$$ 
+
+    Find the posterior density of $\lambda$.
+    
+    \vspace{3.75in}
+
+3. Is the gamma prior a conjugate family to the Poisson likelihood?
+

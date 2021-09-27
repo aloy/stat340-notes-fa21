@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Modeling measurement data</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/countdown/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown/countdown.js"></script>
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+
+
+# Modeling measurement data
+
+### Stat 340: Bayesian Statistics
+
+---
+class: middle
+
+
+# 1. Inference for `\(\mu\)` with known `\(\sigma\)`
+
+# (Problem topics 1-5)
+
+---
+background-image: url(img/2020_election_map_change.png)
+background-size: 85%
+
+
+.footnote[Image source: https://www.washingtonpost.com/graphics/2020/elections/electorate-changes-2016-election-vs-2020/]
+
+---
+
+## Change in the democratic vote
+
+- How did democratic share of the two party vote change from 2016 to 2020?
+
+- MIT Election Data and Science Lab has county-level election results
+
+- We'll look at the percent change in the two-party vote
+
+    `$$Y_i = 100\left(A_i / B_i - 1 \right)$$`
+
+  `\(A_i =\)` % of two-party vote cast for democrats in 2020
+    
+  `\(B_i =\)` % of two-party vote cast for democrats in 2016
+
+
+
+.footnote[MIT Election Data and Science Lab, "County Presidential Election Returns 2000-2020", https://doi.org/10.7910/DVN/VOQCHQ, Harvard Dataverse, V9]
+
+---
+
+## EDA
+
+.left-wide[
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-1-1.svg" width="98%" style="display: block; margin: auto;" /&gt;
+]
+
+.right-narrow[
+- Normal model seems reasonable
+
+- Potential outliers
+]
+
+---
+
+## EDA
+
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-2-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Without outliers
+
+
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-3-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Hypothetical sample
+
+We'll work with a hypothetical sample of 100 counties
+
+
+
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-5-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+class: inverse
+
+## Your turn 1
+
+Derive the likelihood if we assume `\(Y_i \overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma)\)`
+
+Normal PDF:
+
+`$$f(y) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{(y-\mu)^2}{2 \sigma^2} \right), \quad - \infty &lt; y &lt; \infty, \quad  - \infty &lt; \mu &lt; \infty, \quad \sigma &gt; 0$$`
+<div class="countdown" id="timer_61511e6d" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">30</span></code>
+</div>
+
+---
+class: inverse
+
+## Your turn 2
+
+For simplicity, assume that `\(\sigma = 8\)`.
+
+Prior for `\(\mu\)`: `\(\mu \sim \mathcal{N}(\mu_0, \sigma_0)\)`
+
+Derive the posterior for `\(\mu\)`.
+
+<div class="countdown" id="timer_6151203b" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">03</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+---
+
+## Using a weak prior
+
+Suppose we thought the election was a toss up, then a weakly informative prior would be reasonable
+
+.pull-left[
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-8-1.svg" width="100%" /&gt;
+]
+
+.pull-right[
+`\(\mu \sim \mathcal{N}(0, 30)\)`
+
+- swings to either the left or right possible
+
+- more likely to be closer to 0 (no change) than an extreme swing
+]
+
+
+---
+
+## Posterior
+
+
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-9-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## Bayesian hypothesis tests
+
+How do we test `\(H_0: \mu \le 0\)` vs. `\(H_1: \mu &gt; 0\)`?
+
+&lt;br&gt;
+
+&lt;br&gt;
+&lt;br&gt;
+
+--
+
+How do we test `\(H_0: \mu = 0\)` vs. `\(H_1: \mu &gt; 0\)`?
+
+---
+
+## Posterior predictive checks
+
+
+```r
+sigma &lt;- 8   # known sigma
+n     &lt;- 100 # sample size
+post_mean &lt;- 1.96 # posterior mean
+post_sd   &lt;- 0.64 # posterior sd
+S &lt;- 1000  #number of sims
+
+# First draw S mus from the posterior
+mu_draws &lt;- rnorm(S, post_mean, post_sd)
+y_draws  &lt;- matrix(nrow = S, ncol = 100)
+
+# Then, simulate 20 observations for each mu
+for(i in 1:S) {
+  y_draws[i,] &lt;- rnorm(100, mu_draws[i], sigma)
+}
+```
+
+---
+
+## Posterior predictive checks
+
+We need to calculate some testing function, `\(T(\tilde{y})\)`, on each replicated data set
+
+
+```r
+y_bar_sims &lt;- rowMeans(y_draws)
+```
+
+&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-12-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
