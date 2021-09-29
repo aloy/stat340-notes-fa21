@@ -1,0 +1,239 @@
+---
+title: "Modeling count data"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(tidyverse)
+library(countdown)
+library(fontawesome)
+library(xaringanExtra)
+library(ggthemes)
+library(janitor)
+library(bayesrules)
+library(patchwork)
+xaringanExtra::use_panelset()
+
+library(here)
+
+set.seed(1632865492)
+lambda <- rgamma(1, 21, 6)
+calls <- rpois(14, lambda)
+
+yt <- 0
+```
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+
+# 1. Inference for count data
+
+# (Problem topics 1-4)
+
+
+---
+class: middle 
+background-image: url("https://cdn.thewirecutter.com/wp-content/media/2021/04/stopspamcalls-2048px-0S1A5556-2x1-1.jpg?auto=webp&quality=75&crop=2:1&width=980&dpr=1.5)
+background-size: 58%
+background-position: right
+
+.left-narrow[
+## Example
+
+I get .emphasis[a lot] of potential scam calls
+
+Let's model the number of scam calls I receive in a day 
+
+
+]
+
+.footnote[Image credit: Wirecutter]
+
+---
+
+## Modeling choices
+
+To model the number of scam calls, we need...
+
+1. A likelihood
+
+2. A prior
+
+3. Data
+
+---
+
+## Gamma distributions
+
+.right-wide[
+```{r echo=FALSE, fig.height = 6, fig.width = 9, out.width = "95%"}
+g11 <- plot_gamma(1, 1) + ggtitle("Gamma(1, 1)") + labs(x = NULL) + ylim(0, 2) + xlim(0, 8)
+g21 <- plot_gamma(2, 1) + ggtitle("Gamma(2, 1)") + labs(x=NULL, y=NULL)  + ylim(0, 2)  + xlim(0, 8)
+g41 <- plot_gamma(4, 1) + ggtitle("Gamma(4, 1)") + labs(x=NULL, y=NULL)  + ylim(0, 2)  + xlim(0, 8)
+g12 <- plot_gamma(1, 2) + ggtitle("Gamma(1, 2)")  + ylim(0, 2)  + xlim(0, 8)
+g22 <- plot_gamma(2, 2) + ggtitle("Gamma(2, 2)") + labs(y=NULL)  + ylim(0, 2)  + xlim(0, 8)
+g42 <- plot_gamma(4, 2) + ggtitle("Gamma(4, 2)") + labs(y=NULL)  + ylim(0, 2)  + xlim(0, 8)
+
+g11 + g21 + g41 + g12 + g22 + g42 + plot_layout(ncol = 3)
+```
+
+]
+
+.left-narrow[
+
+- $a=1 \Rightarrow$ exponential
+
+- $a > b \Rightarrow$, mean > 1
+
+- $a < b \Rightarrow$, mean < 1
+
+-  as $a$  increases relative to  $b$, skew $\downarrow$ and variance $\uparrow$
+
+]
+
+.footnote[`bayesrules::plot_gamma()`]
+
+
+
+---
+class: inverse
+
+## Your turn `r (yt <- yt + 1)`
+
+Let $X_{1},X_{2},\ldots,X_{n}$ be a random sample from the Poisson distribution with PMF 
+$f(x)=\dfrac{\lambda^{x}e^{-\lambda}}{x!},\ x=0,1,2,\ldots$
+
+1. Write down the likelihood function, $f(x_1, \ldots, x_n | \lambda)$.
+
+2. Suppose that you decide to use a Gamma(a,b) prior distribution for $\lambda$ with PDF
+$\pi(\lambda)=\dfrac{b^{a}}{\Gamma(a)}\lambda^{a-1}e^{-b\lambda},\ \lambda>0.$ 
+
+    Find the posterior density of $\lambda$.
+
+3. Is the gamma prior a conjugate family to the Poisson likelihood?
+
+```{r echo=FALSE}
+countdown(minutes = 4)
+```
+
+---
+
+## Tuning a gamma prior
+
+Set up a system of equations to solve with any two characteristics (not just quantiles)
+
+
+.left-column[
+
+## Mean
+
+## Mode
+
+## Variance
+
+]
+
+.right-column[
+$E(\lambda) = \dfrac{a}{b}$
+
+${\rm mode}(\lambda) = \dfrac{a-1}{b}$ if $a, \ge 1$; 0 if $0 \le a < 1$
+
+${\rm Var}(\lambda) = \dfrac{a}{b^2}$
+
+]
+
+---
+
+## Parameter solver
+
+If you want to use two quantiles, then you can use `gamma_solver()`
+
+```{r message=FALSE}
+devtools::source_gist("https://gist.github.com/aloy/9d0385363663a28bd8eccf85bf9475bf")
+```
+
+```{r collapse=TRUE}
+gamma_solver(.values = c(10, 20), .probs = c(.05, .95), .guess = c(5, 1))
+```
+
+`.values` - values of two quantiles
+`.probs` - what quantiles did you specify?
+`.guess` - initial guess for a and b
+
+
+---
+class: inverse
+
+## Your turn `r (yt <- yt + 1)`
+
+My best guess is that this rate...
+
+- is expected to be around  5 calls per day
+
+- could reasonably range from 2 to 7 calls per day
+
+
+What gamma prior would you use?
+
+
+```{r echo=FALSE}
+countdown(3)
+```
+
+---
+
+## Updating $\lambda$ 
+
+Over the first two weeks of the term, I recorded the number of scam calls I received:
+
+```{r echo=FALSE, comment=""}
+cat(calls)
+```
+
+Summary stats: .hidden[XX] $\displaystyle\sum_{i=1}^{14} y_i = `r sum(calls)`$ .hidden[XXXXX] $n = `r length(calls)`$
+
+So our posterior distribution for $\lambda$ is...
+
+---
+
+## Updating $\lambda$ 
+
+```{r echo=FALSE, fig.height = 2.5, fig.width = 4.5, out.width = "80%", fig.align='center'}
+plot_gamma_poisson(10, 2, sum_y = sum(calls), n = length(calls))
+```
+
+---
+class: inverse
+
+## Your turn `r (yt <- yt + 1)`
+
+1. How many scam calls should I expect on average in a typical day?
+
+1. How many scam calls should I expect tomorrow?
+
+1. How many scam calls should I expect in the next week (7 days)?

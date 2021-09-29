@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>Modeling measurement data</title>
+    <title>Modeling count data</title>
     <meta charset="utf-8" />
     <meta name="author" content="Stat 340: Bayesian Statistics" />
     <script src="libs/header-attrs/header-attrs.js"></script>
@@ -23,7 +23,7 @@
 class: title-slide, left, middle
 
 
-# Modeling measurement data
+# Modeling count data
 
 ### Stat 340: Bayesian Statistics
 
@@ -31,81 +31,64 @@ class: title-slide, left, middle
 class: middle
 
 
-# 1. Inference for `\(\mu\)` with known `\(\sigma\)`
+# 1. Inference for count data
 
-# (Problem topics 1-5)
+# (Problem topics 1-4)
+
 
 ---
-background-image: url(img/2020_election_map_change.png)
-background-size: 85%
+class: middle 
+background-image: url("https://cdn.thewirecutter.com/wp-content/media/2021/04/stopspamcalls-2048px-0S1A5556-2x1-1.jpg?auto=webp&amp;quality=75&amp;crop=2:1&amp;width=980&amp;dpr=1.5)
+background-size: 58%
+background-position: right
+
+.left-narrow[
+## Example
+
+I get .emphasis[a lot] of potential scam calls
+
+Let's model the number of scam calls I receive in a day 
 
 
-.footnote[Image source: https://www.washingtonpost.com/graphics/2020/elections/electorate-changes-2016-election-vs-2020/]
-
----
-
-## Change in the democratic vote
-
-- How did democratic share of the two party vote change from 2016 to 2020?
-
-- MIT Election Data and Science Lab has county-level election results
-
-- We'll look at the percent change in the two-party vote
-
-    `$$Y_i = 100\left(A_i / B_i - 1 \right)$$`
-
-  `\(A_i =\)` % of two-party vote cast for democrats in 2020
-    
-  `\(B_i =\)` % of two-party vote cast for democrats in 2016
-
-
-
-.footnote[MIT Election Data and Science Lab, "County Presidential Election Returns 2000-2020", https://doi.org/10.7910/DVN/VOQCHQ, Harvard Dataverse, V9]
-
----
-
-## EDA
-
-.left-wide[
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-1-1.svg" width="98%" style="display: block; margin: auto;" /&gt;
 ]
 
-.right-narrow[
-- Normal model seems reasonable
-
-- Potential outliers
-]
+.footnote[Image credit: Wirecutter]
 
 ---
 
-## EDA
+## Modeling choices
 
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-2-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+To model the number of scam calls, we need...
+
+1. A likelihood
+
+2. A prior
+
+3. Data
 
 ---
 
-## Without outliers
+## Gamma distributions
 
+.right-wide[
+&lt;img src="07-poisson-count_files/figure-html/unnamed-chunk-1-1.svg" width="95%" /&gt;
 
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-3-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
-
----
-
-## Hypothetical sample
-
-We'll work with a hypothetical sample of 100 counties
-
-
-
-.pull-left[
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-5-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
 ]
 
-.pull-right[
-$\overline{y} = 1.96$$
+.left-narrow[
 
-`\(n = 100\)`
+- `\(a=1 \Rightarrow\)` exponential
+
+- `\(a &gt; b \Rightarrow\)`, mean &gt; 1
+
+- `\(a &lt; b \Rightarrow\)`, mean &lt; 1
+
+-  as `\(a\)`  increases relative to  `\(b\)`, skew `\(\downarrow\)` and variance `\(\uparrow\)`
+
 ]
+
+.footnote[`bayesrules::plot_gamma()`]
+
 
 
 ---
@@ -113,146 +96,121 @@ class: inverse
 
 ## Your turn 1
 
-Derive the likelihood if we assume `\(Y_i \overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma)\)`
+Let `\(X_{1},X_{2},\ldots,X_{n}\)` be a random sample from the Poisson distribution with PMF 
+`\(f(x)=\dfrac{\lambda^{x}e^{-\lambda}}{x!},\ x=0,1,2,\ldots\)`
 
-Normal PDF:
+1. Write down the likelihood function, `\(f(x_1, \ldots, x_n | \lambda)\)`.
 
-`$$f(y) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{(y-\mu)^2}{2 \sigma^2} \right), \quad - \infty &lt; y &lt; \infty, \quad  - \infty &lt; \mu &lt; \infty, \quad \sigma &gt; 0$$`
-<div class="countdown" id="timer_6151450e" style="right:0;bottom:0;" data-warnwhen="0">
-<code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">30</span></code>
+2. Suppose that you decide to use a Gamma(a,b) prior distribution for `\(\lambda\)` with PDF
+`\(\pi(\lambda)=\dfrac{b^{a}}{\Gamma(a)}\lambda^{a-1}e^{-b\lambda},\ \lambda&gt;0.\)` 
+
+    Find the posterior density of `\(\lambda\)`.
+
+3. Is the gamma prior a conjugate family to the Poisson likelihood?
+
+<div class="countdown" id="timer_6153e0c1" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">04</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
+
+---
+
+## Tuning a gamma prior
+
+Set up a system of equations to solve with any two characteristics (not just quantiles)
+
+
+.left-column[
+
+## Mean
+
+## Mode
+
+## Variance
+
+]
+
+.right-column[
+`\(E(\lambda) = \dfrac{a}{b}\)`
+
+`\({\rm mode}(\lambda) = \dfrac{a-1}{b}\)` if `\(a, \ge 1\)`; 0 if `\(0 \le a &lt; 1\)`
+
+`\({\rm Var}(\lambda) = \dfrac{a}{b^2}\)`
+
+]
+
+---
+
+## Parameter solver
+
+If you want to use two quantiles, then you can use `gamma_solver()`
+
+
+```r
+devtools::source_gist("https://gist.github.com/aloy/9d0385363663a28bd8eccf85bf9475bf")
+```
+
+
+```r
+gamma_solver(.values = c(10, 20), .probs = c(.05, .95), .guess = c(5, 1))
+##         a         b 
+## 22.941774  1.567326
+```
+
+`.values` - values of two quantiles
+`.probs` - what quantiles did you specify?
+`.guess` - initial guess for a and b
+
 
 ---
 class: inverse
 
 ## Your turn 2
 
-For simplicity, assume that `\(\sigma = 8\)`.
+My best guess is that this rate...
 
-Prior for `\(\mu\)`: `\(\mu \sim \mathcal{N}(\mu_0, \sigma_0)\)`
+- is expected to be around  5 calls per day
 
-Derive the posterior for `\(\mu\)`.
+- could reasonably range from 2 to 7 calls per day
 
-<div class="countdown" id="timer_615143dc" style="right:0;bottom:0;" data-warnwhen="0">
+
+What gamma prior would you use?
+
+
+<div class="countdown" id="timer_6153e02c" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">03</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
 ---
 
-## Using a weak prior
+## Updating `\(\lambda\)` 
 
-Suppose we thought the election was a toss up, then a weakly informative prior would be reasonable
+Over the first two weeks of the term, I recorded the number of scam calls I received:
 
-.pull-left[
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-8-1.svg" width="100%" /&gt;
-]
 
-.pull-right[
-`\(\mu \sim \mathcal{N}(0, 30)\)`
+```
+2 1 5 5 1 3 3 1 3 3 0 6 1 1
+```
 
-- swings to either the left or right possible
+Summary stats: .hidden[XX] `\(\displaystyle\sum_{i=1}^{14} y_i = 35\)` .hidden[XXXXX] `\(n = 14\)`
 
-- more likely to be closer to 0 (no change) than an extreme swing
-]
-
+So our posterior distribution for `\(\lambda\)` is...
 
 ---
 
-## Posterior
+## Updating `\(\lambda\)` 
 
-
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-9-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
-
+&lt;img src="07-poisson-count_files/figure-html/unnamed-chunk-7-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 
 ---
+class: inverse
 
-## Bayesian hypothesis tests
+## Your turn 3
 
-How do we test `\(H_0: \mu \le 0\)` vs. `\(H_1: \mu &gt; 0\)`?
+1. How many scam calls should I expect on average in a typical day?
 
-.panelset[
-.panel[.panel-name[Question]
-]
-.panel[.panel-name[Interval null]
+1. How many scam calls should I expect tomorrow?
 
-```r
-# Null probability
-pnorm(0, mean = 1.96, sd = 0.7997)
-```
-
-```
-## [1] 0.007124599
-```
-
-```r
-# Alternative probability
-1 - pnorm(0, mean = 1.96, sd = 0.7997)
-```
-
-```
-## [1] 0.9928754
-```
-]
-]
-
----
-
-## Bayesian hypothesis tests
-
-How do we test `\(H_0: \mu = 0\)` vs. `\(H_1: \mu \ne 0\)`?
-
-.panelset[
-.panel[.panel-name[Question]
-
-]
-.panel[.panel-name[Point null]
-
-```r
-# Calculate a credible interval
-qnorm(c(0.05, 0.95), mean = 1.96, sd = 0.7997)
-```
-
-```
-## [1] 0.6446106 3.2753894
-```
-]
-]
-
----
-
-## Posterior predictive checks
-
-
-```r
-sigma &lt;- 8   # known sigma
-n     &lt;- 100 # sample size
-post_mean &lt;- 1.96   # posterior mean
-post_sd   &lt;- 0.7997 # posterior sd
-S &lt;- 1000  #number of sims
-
-# First draw S mus from the posterior
-mu_draws &lt;- rnorm(S, post_mean, post_sd)
-y_draws  &lt;- matrix(nrow = S, ncol = 100)
-
-# Then, simulate 20 observations for each mu
-for(i in 1:S) {
-  y_draws[i,] &lt;- rnorm(100, mu_draws[i], sigma)
-}
-```
-
----
-
-## Posterior predictive checks
-
-We need to calculate some testing function, `\(T(\tilde{y})\)`, on each replicated data set
-
-
-```r
-y_bar_sims &lt;- rowMeans(y_draws)
-```
-
-&lt;img src="06-normal-mean_files/figure-html/unnamed-chunk-14-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
-
+1. How many scam calls should I expect in the next week (7 days)?
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

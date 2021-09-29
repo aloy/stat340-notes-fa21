@@ -24,11 +24,12 @@ library(dplyr)
 library(tidyverse)
 library(countdown)
 library(fontawesome)
-library(xaringanthemer)
+library(xaringanExtra)
 library(ggthemes)
 library(janitor)
 library(urbnmapr)
 library(bayesrules)
+xaringanExtra::use_panelset()
 
 library(here)
 votes <- read_csv(here("data", "pres_pct_change_2016_2020.csv"))
@@ -152,11 +153,19 @@ select_county <- votes %>%
   sample_n(size = 100, replace = FALSE)
 ```
 
-```{r echo=FALSE, fig.height = 3, fig.width = 4.5, fig.align='center', out.width = "50%",  warning=FALSE}
+.pull-left[
+```{r echo=FALSE, fig.height = 3, fig.width = 4.5, fig.align='center', out.width = "100%",  warning=FALSE}
 ggplot(select_county, aes(x = pct_change_dem)) +
   geom_histogram(bins = 20, fill = "navy", alpha = 0.6) +
   labs(x = "% change in democratic vote")
 ```
+]
+
+.pull-right[
+$\overline{y} = `r round(mean(select_county$pct_change_dem), 2)`$$
+
+$n = 100$
+]
 
 
 ---
@@ -228,14 +237,37 @@ plot_normal_normal(mean = 0, sd = 30, sigma = 8, y_bar = ybar, n = n) + lims(x =
 
 How do we test $H_0: \mu \le 0$ vs. $H_1: \mu > 0$?
 
-<br>
+.panelset[
+.panel[.panel-name[Question]
+]
+.panel[.panel-name[Interval null]
+```{r}
+# Null probability
+pnorm(0, mean = 1.96, sd = 0.7997)
 
-<br>
-<br>
+# Alternative probability
+1 - pnorm(0, mean = 1.96, sd = 0.7997)
+```
+]
+]
 
---
+---
 
-How do we test $H_0: \mu = 0$ vs. $H_1: \mu > 0$?
+## Bayesian hypothesis tests
+
+How do we test $H_0: \mu = 0$ vs. $H_1: \mu \ne 0$?
+
+.panelset[
+.panel[.panel-name[Question]
+
+]
+.panel[.panel-name[Point null]
+```{r}
+# Calculate a credible interval
+qnorm(c(0.05, 0.95), mean = 1.96, sd = 0.7997)
+```
+]
+]
 
 ---
 
@@ -244,8 +276,8 @@ How do we test $H_0: \mu = 0$ vs. $H_1: \mu > 0$?
 ```{r}
 sigma <- 8   # known sigma
 n     <- 100 # sample size
-post_mean <- 1.96 # posterior mean
-post_sd   <- 0.64 # posterior sd
+post_mean <- 1.96   # posterior mean
+post_sd   <- 0.7997 # posterior sd
 S <- 1000  #number of sims
 
 # First draw S mus from the posterior
