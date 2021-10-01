@@ -237,3 +237,76 @@ class: inverse
 1. How many scam calls should I expect tomorrow?
 
 1. How many scam calls should I expect in the next week (7 days)?
+
+---
+
+#### 1. How many scam calls should I expect on average in a typical day?
+
+"Exact" credible interval
+```{r}
+qgamma(c(0.05, 0.95), 45, 16)
+```
+
+Simulation-based credible interval
+```{r}
+lambda_draws <- rgamma(10000, 45, 16)
+quantile(lambda_draws, probs = c(0.05, 0.95))
+```
+
+
+
+---
+
+#### 2. How many scam calls should I expect tomorrow?
+
+Simulation-based posterior predictive
+
+.code100[
+```{r}
+S <- 1000
+
+# Draw lambdas, then a y for each lambda
+lambda_draws <- rgamma(S, 45, 16)
+future_ys <- rpois(S, lambda_draws)
+
+# Tabulate and calc. a credible interval
+post_pred_dsn <- janitor::tabyl(future_ys)[,-2]
+LearnBayes::discint(post_pred_dsn, prob = 0.9)
+```
+]
+
+
+---
+
+#### 3. How many scam calls should I expect in the next week (7 days)?
+
+.code100[
+```{r predict-week, eval=FALSE}
+S <- 1000
+
+# Draw lambdas
+lambda_draws <- rgamma(S, 45, 16)
+
+# Simulate 7 ys for each lambda
+future_week <- matrix(nrow = S, ncol = 7)
+for(i in 1:S) {
+  future_week[i,] <- rpois(7, lambda_draws[i])
+}
+
+# Summarize each week
+week_totals <- rowSums(future_week)
+
+# Tabulate and calc. a credible interval
+post_pred_total <- janitor::tabyl(week_totals)[,-2]
+LearnBayes::discint(post_pred_total, prob = 0.9)
+```
+]
+
+---
+
+#### 3. How many scam calls should I expect in the next week (7 days)?
+
+.code100[
+```{r predict-week, echo=FALSE}
+```
+]

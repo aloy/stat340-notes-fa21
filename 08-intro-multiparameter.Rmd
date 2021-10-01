@@ -1,0 +1,364 @@
+---
+title: "Introduction to multiparameter models"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+class: middle, clear
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(rethinking)
+library(patchwork)
+library(glue)
+
+Howell1 <- readr::read_delim("https://raw.githubusercontent.com/rmcelreath/rethinking/master/data/Howell1.csv", delim = ";")
+
+yt <- 0
+```
+
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: middle
+
+
+# 1. Multiparameter models
+
+# 2. Grid approximation
+
+# (Problem topics 6 & 7)
+
+
+---
+background-image: url(img/howell-cover.jpg)
+background-size: 40%
+background-position: right
+
+
+.left-wide[
+## Example
+
+- Partial census data for the Dobe area !Kung San, a foraging population
+
+- Compiled from Nancy Howell's interviews
+
+.code80[
+```{r message=FALSE, warning=FALSE, tidy=FALSE, echo=FALSE}
+adults <- filter(Howell1, age >= 18)
+rethinking::precis(adults)
+```
+]
+
+]
+
+
+
+---
+
+## Example
+
+
+
+Suppose interest is in analyzing the average height of an adult
+
+
+```{r echo=FALSE, message=FALSE, fig.height = 3.5, fig.width = 5, fig.align='center'}
+ggplot(adults) +
+  geom_histogram(aes(x = height), bins = 20, fill = "slateblue", alpha = 0.7) +
+  theme_light()
+```
+
+.footnote[Anthropologists would be interested in more complex relationships, but we have to start somewhere.]
+
+
+---
+background-image: url(img/kung-info-priors.png)
+background-position: 80% 50%
+background-size: 33%
+
+
+## Informative analysis
+
+.pull-left[
+
+### Normal model
+
+$y_i \sim \mathcal{N}(\mu, \sigma)$
+
+$\mu \sim \mathcal{N}(178,\ 20)$
+
+$\sigma \sim \text{Unif}(0, 50)$
+
+]
+
+.pull-right[
+```{r echo=FALSE, fig.width = 3, fig.height = 6, cache=TRUE}
+mu_prior <- ggplot(data= NULL) +
+  stat_function(fun = dnorm, args = list(mean = 178, sd = 20), color = "slateblue") +
+  scale_x_continuous(limits = c(100, 250), breaks = c(100, 178, 250)) +
+  labs(x = expression(mu), y = "Density", title = "N(178, 20)") + theme_classic()
+
+sigma_prior <- ggplot(data= NULL) +
+  stat_function(fun = dunif, args = list(min = 0, max = 50), color = "slateblue") +
+  scale_x_continuous(limits = c(-5, 55), breaks = c(0, 50)) +
+  labs(x = expression(sigma), y = "Density", title = "Unif(0, 50") + theme_classic()
+
+ggsave(mu_prior  / sigma_prior, filename = "img/kung-info-priors.png", width = 3.5, height = 6)
+```
+]
+
+.footnote[This analysis was discussed by McElreath in *Statistical Rethinking*.]
+
+---
+
+## Prior predictive distribution
+
+What do these priors imply about the height, before we see data?
+
+```{r}
+sample_mu    <- rnorm(1e4, 178, 20)
+sample_sigma <- runif(1e4, 0, 50)
+sim_heights  <- rnorm(1e4, sample_mu, sample_sigma)
+```
+
+.pull-left[
+```{r echo=FALSE, fig.height = 2.5, fig.width = 4, out.width = "90%"}
+ggplot(data.frame(h = sim_heights), aes(x = h)) +
+  geom_histogram(aes(y=..density..), alpha = 0.5, bins = 50) +
+  geom_density(color = "slateblue") +
+  scale_x_continuous(breaks = c(0, 73, 178, 283)) +
+  theme_classic() +
+  xlab("Height (cm)")
+```
+]
+
+.pull-right[
+<br>
+
+Conversion helper:<br>
+100 cm = 3.3 feet<br>
+200 cm = 6.5 feet
+
+]
+
+---
+background-image: url(img/rainbow_grid_image.png)
+background-size: 100%
+
+## We can *approximate* the joint posterior using a grid
+
+---
+background-image: url(img/normal-normal-grid.png)
+background-size: cover
+
+
+```{r echo=FALSE, fig.height = 6, fig.width = 9, fig.align='center', out.width = "60%", warning=FALSE, cache=TRUE}
+normal_grid_approx <- function(d2 = adult, ngrid = 200) {
+  mu.list <- seq( from=140, to=160 , length.out=ngrid )
+  sigma.list <- seq( from=4 , to=9 , length.out=ngrid )
+  post <- expand.grid( mu=mu.list , sigma=sigma.list )
+  
+  
+  d2 <- adults
+  post$LL <- sapply( 1:nrow(post) , function(i) sum( dnorm(
+    d2$height ,
+    mean=post$mu[i] ,
+    sd=post$sigma[i] ,
+    log=TRUE ) ) )
+  post$prod <- post$LL + dnorm( post$mu , 178 , 20 , TRUE ) +
+    dunif( post$sigma , 0 , 50 , TRUE )
+  post$prob <- exp( post$prod - max(post$prod) )
+  
+  ggplot(post, aes(x = mu, y = sigma, fill = prob)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = "black") +
+    xlim(153, 156) + 
+    ylim(6.75, 9) +
+    theme_classic() + 
+    theme(legend.position="none") + 
+    coord_fixed() + 
+    labs(x = expression(mu), y = expression(sigma)) +
+    ggtitle(glue::glue("{ngrid} x {ngrid}")) + 
+    theme(plot.title = element_text(hjust = 0.5))
+}
+
+grid_plot50 <- normal_grid_approx(ngrid = 50) 
+grid_plot100 <- normal_grid_approx(ngrid = 100) 
+grid_plot200 <- normal_grid_approx(ngrid = 200) 
+
+
+
+ggsave(((grid_plot50 / grid_plot100) | grid_plot200), filename = "img/normal-normal-grid.png", height = 6, width = 9)
+```
+
+
+
+---
+class: clear
+
+Create a grid over the coordinate plane
+
+```{r cache=TRUE}
+param_grid <- expand.grid(
+  mu = seq(from = 118, to = 238, length.out = 1000), 
+  sigma = seq(from = 0, to = 50, length.out = 1000)
+)
+```
+
+Create a vectorized log-likelihood function
+
+```{r}
+# log likelihood function
+log_lik_norm <- function(x, mu, sigma) {
+  sum(dnorm(x, mean = mu, sd = sigma, log = TRUE))
+}
+
+# Vectorize so we can pass in all mu and sigma at once
+log_lik_norm <- Vectorize(log_lik_norm, vectorize.args = c("mu", "sigma"))
+```
+
+---
+class: clear
+
+Evaluate log prior, log-likelihood on the grid, then derive the posterior
+
+```{r cache=TRUE}
+posterior <- param_grid %>%
+  mutate(
+    log_prior = dnorm(mu, 178, 20, log = TRUE) +
+      dunif(sigma, 0, 50, log = TRUE),
+    log_lik = log_lik_norm(adults$height, mu = mu, sigma = sigma), 
+    log_post = log_prior + log_lik,
+    unstd_post = exp(log_post - max(log_post)),
+    post = unstd_post / sum(unstd_post)
+  )
+```
+
+```{r echo=FALSE}
+print(as_tibble(posterior), n = 4)
+```
+
+---
+class: clear
+
+Sample from your grid posterior
+
+.left-narrow[
+```{r}
+# dplyr needs to be loaded
+posterior_draws <- sample_n(
+  posterior, 
+  size = 1e4, 
+  replace = TRUE, 
+  weight = post
+)
+```
+]
+
+.right-wide[
+```{r echo=FALSE, fig.height=4, fig.width=4, cache=TRUE, fig.align='center', out.width = "80%"}
+ggplot(data = posterior_draws, aes(x = mu, y = sigma)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "slateblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(mu),
+       y = expression(sigma))
+```
+]
+
+
+---
+background-image: url(img/grid_joint_marginal_posteriors.png)
+background-size: 100%
+
+```{r echo=FALSE}
+p <- ggplot(data = posterior_draws, aes(x = mu, y = sigma)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "slateblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(mu),
+       y = expression(sigma))
+
+with_margins <- ggExtra::ggMarginal(
+  p,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  fill = 'slateblue',
+  alpha = 0.6
+)
+
+ggsave(with_margins, filename = "img/grid_joint_marginal_posteriors.png", height = 4, width = 7)
+
+```
+
+
+
+
+---
+
+## Approximate marginal posteriors
+
+.pull-left[
+
+```{r echo=FALSE, fig.height=2, fig.width=4}
+ggplot(data = posterior_draws) +
+  geom_density(mapping = aes(x = mu), color = NA, fill = "slateblue", alpha = 0.5) +
+  theme_minimal() +
+  labs(x = expression(mu), title = expression(paste("Posterior of ", mu)))
+```
+
+.code100[
+```{r}
+quantile(posterior_draws$mu, 
+         probs = c(0.05, 0.95))
+```
+]
+
+]
+
+.pull-right[
+
+```{r echo=FALSE, fig.height=2, fig.width=4}
+ggplot(data = posterior_draws) +
+  geom_density(mapping = aes(x = sigma), color = NA, fill = "slateblue", alpha = 0.5) +
+  theme_minimal() +
+  labs(x = expression(sigma), title = expression(paste("Posterior of ", sigma)))
+```
+
+.code100[
+```{r}
+quantile(posterior_draws$sigma, 
+         probs = c(0.05, 0.95))
+```
+]
+
+<br>
+
+<br>
+
+]

@@ -108,7 +108,7 @@ Let `\(X_{1},X_{2},\ldots,X_{n}\)` be a random sample from the Poisson distribut
 
 3. Is the gamma prior a conjugate family to the Poisson likelihood?
 
-<div class="countdown" id="timer_6153e0c1" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_61546a78" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">04</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -176,7 +176,7 @@ My best guess is that this rate...
 What gamma prior would you use?
 
 
-<div class="countdown" id="timer_6153e02c" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_615468a0" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">03</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -211,6 +211,106 @@ class: inverse
 1. How many scam calls should I expect tomorrow?
 
 1. How many scam calls should I expect in the next week (7 days)?
+
+---
+
+#### 1. How many scam calls should I expect on average in a typical day?
+
+"Exact" credible interval
+
+```r
+qgamma(c(0.05, 0.95), 45, 16)
+```
+
+```
+## [1] 2.160188 3.535790
+```
+
+Simulation-based credible interval
+
+```r
+lambda_draws &lt;- rgamma(10000, 45, 16)
+quantile(lambda_draws, probs = c(0.05, 0.95))
+```
+
+```
+##       5%      95% 
+## 2.158735 3.558225
+```
+
+
+
+---
+
+#### 2. How many scam calls should I expect tomorrow?
+
+Simulation-based posterior predictive
+
+.code100[
+
+```r
+S &lt;- 1000
+
+# Draw lambdas, then a y for each lambda
+lambda_draws &lt;- rgamma(S, 45, 16)
+future_ys &lt;- rpois(S, lambda_draws)
+
+# Tabulate and calc. a credible interval
+post_pred_dsn &lt;- janitor::tabyl(future_ys)[,-2]
+LearnBayes::discint(post_pred_dsn, prob = 0.9)
+```
+
+```
+## $prob
+## [1] 0.936
+## 
+## $set
+## [1] 0 1 2 3 4 5
+```
+]
+
+
+---
+
+#### 3. How many scam calls should I expect in the next week (7 days)?
+
+.code100[
+
+```r
+S &lt;- 1000
+
+# Draw lambdas
+lambda_draws &lt;- rgamma(S, 45, 16)
+
+# Simulate 7 ys for each lambda
+future_week &lt;- matrix(nrow = S, ncol = 7)
+for(i in 1:S) {
+  future_week[i,] &lt;- rpois(7, lambda_draws[i])
+}
+
+# Summarize each week
+week_totals &lt;- rowSums(future_week)
+
+# Tabulate and calc. a credible interval
+post_pred_total &lt;- janitor::tabyl(week_totals)[,-2]
+LearnBayes::discint(post_pred_total, prob = 0.9)
+```
+]
+
+---
+
+#### 3. How many scam calls should I expect in the next week (7 days)?
+
+.code100[
+
+```
+## $prob
+## [1] 0.914
+## 
+## $set
+##  [1] 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 29
+```
+]
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

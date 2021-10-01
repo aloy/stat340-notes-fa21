@@ -1,0 +1,9 @@
+base
+gridExtra
+dplyr
+ggplot2
+ggthemes
+StanHeaders
+rstan
+rethinking
+patchwork
