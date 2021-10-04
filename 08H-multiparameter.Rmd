@@ -1,9 +1,9 @@
 ---
 geometry: margin = 1in
 output:
+  pdf_document: default
   html_document:
     code_download: true
-  pdf_document: default
 ---
 
 
@@ -14,7 +14,7 @@ knitr::opts_chunk$set(message = FALSE, eval = FALSE)
 \pagenumbering{gobble} 
 
 # Fitting multiparameter models
-## Math 315, Adam Loy
+## Stat 340, Fall 2021
 
 For a small number of parameters, the grid approximation can be used to approximate the posterior distribution in a multiparameter model. Below, we work through the steps to fit the informative model for heights discussed in class:
 
