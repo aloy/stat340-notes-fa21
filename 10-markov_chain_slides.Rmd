@@ -1,0 +1,150 @@
+---
+title: "Introduction to Markov Chains"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+```
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+class: inverse
+
+
+## Your turn
+
+```{r echo=FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("figs/graduation_mc.jpg")
+```
+
+1. What's the probability that a student who drops out will re-enroll?
+
+1. What's the probability that a senior will graduate?
+
+1. Does that probability depend on how many years it took them to achieve senior class standing?
+
+
+---
+class: middle
+
+# Concepts
+
+## 1. Markov chains
+
+## 2. Transition matrices
+
+---
+class: inverse
+
+## Your turn
+
+```{r echo=FALSE, out.width="70%", fig.align='center'}
+knitr::include_graphics("figs/graduation_mc.jpg")
+```
+
+.Large[
+Write down the $6 \times 6$ transition matrix for the university graduation rate Markov chain model.
+
+1. Should the probabilities within each .bold[row] sum to 1?
+
+1. Should the probabilities within each .bold[column] sum to 1?
+]
+
+---
+class: middle
+
+# Concepts
+
+## 3. Calculating probabilities using the transition matrix
+
+## 4. Marginal distribution of $\bf X_n$
+
+---
+class: inverse
+
+## Your turn
+
+
+Read over state/chain classifications and apply these labels to the following Markov chains:
+
+.pull-left[
+
+```{r echo=FALSE, out.width = "85%"}
+knitr::include_graphics("figs/mc1.png")
+
+knitr::include_graphics("figs/mc2.png")
+
+```
+]
+
+.pull-right[
+```{r echo=FALSE, out.width = "85%"}
+knitr::include_graphics("figs/mc3.png")
+knitr::include_graphics("figs/mc4.png")
+```
+]
+
+---
+class: middle
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics("figs/mc1.png")
+```
+
+---
+class: middle
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics("figs/mc2.png")
+```
+
+---
+class: middle
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics("figs/mc3.png")
+```
+
+---
+class: middle
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics("figs/mc4.png")
+```
+
+---
+class: middle
+
+# Concepts
+
+## 5. Long-run behavior
+
+## 6. Ergodic Markov chains 
