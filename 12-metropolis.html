@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>The Metropolis algorithm</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# The Metropolis algorithm
+
+### Stat 340: Bayesian Statistics
+
+---
+
+## Big idea: Markov chain simulation
+
+**Situation:** Suppose that sampling from `\(\pi_n(\theta)\)` is hard, but that we can (somehow) generate a Markov chain `\(\{\theta(t), t \in T\}\)` with stationary distribution `\(\pi_n(\theta)\)`.
+
+- We know the the stationary distribution
+
+- We seek transitions `\(p(\theta^{(t+1)} | \theta ^{(t)} )\)` that will take us to the stationary distribution
+
+
+---
+
+## Overview
+
+
+- Start from some initial guess `\(\theta^{(0)}\)` and let the chain run for `\(n\)`
+steps ($n$ large), so that it reaches its stationary distribution
+
+- After convergence, all additional steps in the chain are draws from the
+stationary distribution `\(\pi_n(\theta)\)`
+
+- MCMC methods are all based on the this idea; difference is just in how
+the transitions in the MC are created
+
+
+---
+
+## Example: Launch failures
+
+.large[
+- FAA and USAF were interested in estimating the failure probability for new rockets launched by companies with limited experience
+
+- Goal is to assess prelaunch risk. 
+
+- Failures have significant on 
+
+    + public safety
+    
+    +  aerospace manufacturer's ability to develop and field new rocket systems.
+
+- Johnson et al. (2005) data from 1980-2002
+
+    + 11 launches: 3 successes, 8 failures
+]
+
+---
+
+## Model
+
+`\(Y= \#\)` successful launches
+
+.bold[Likelihood:]
+Assuming trials are iid `\({\rm Bernoulli} (\theta)\)`
+
+`$$Y \sim {\rm Binomial}(n=11, \theta)$$`
+
+.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
+
+.bold[Posterior:]
+
+`$$p(\theta | y) \propto \begin{cases}
+\theta^3 (1-\theta)^8 &amp; \text{if } 0.1 &lt; \theta &lt; 0.9\\
+0 &amp; \text{otherwise.}\end{cases}$$`
+
+
+*Is the posterior a density we know?*
+
+
+---
+
+## Metropolis algorithm
+
+1. Select a value `\(\theta^{(0)}\)` where `\(\pi_n(\theta^{(0)}) &gt; 0\)`
+
+1. Given the current draw `\(\theta^{(i)}\)`, propose a *candidate draw* `\(\theta^p \sim {\rm Unif}(\theta^{(i)}+C, \theta^{(i)}+C)\)`.
+
+1. Evaluate the (unnormalized) posterior at the current value: `\(\pi_n(\theta^{(i)})\)`.
+
+1. Evaluate the (unnormalized) posterior at the candidate: `\(\pi_n(\theta^{c})\)`.
+
+1. Accept candidate with probability `\(R = \min \left\{ \pi_n(\theta^{c} ) \big/ \pi_n(\theta^{(i)} ), 1 \right\}\)`.
+
+    * Draw `\(U \sim {\rm Unif}(0, 1)\)`, if `\(U&lt;R\)` set `\(\theta^{(i+1)} = \theta^{p}\)`
+    
+    * Otherwise, set `\(\theta^{(i+1)} = \theta^{(i)}\)`.
+
+---
+
+## Initial value: 0.5
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-1-1.svg" width="100%" /&gt;
+
+---
+
+## Propose 0.4, acceptance probability = 1
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-2-1.svg" width="100%" /&gt;
+
+---
+
+## Update current draw
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-3-1.svg" width="100%" /&gt;
+
+---
+
+## Propose 0.45, acceptance probability 0.71
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-4-1.svg" width="100%" /&gt;
+
+---
+
+## `\(U = 0.8\)`, retain current draw
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-5-1.svg" width="100%" /&gt;
+
+---
+
+## Propose 0.58, acceptance probability 0.18
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-6-1.svg" width="100%" /&gt;
+
+---
+
+## Metropolis function (Albert and Hu, p. 326)
+
+.code100[
+
+```r
+metropolis &lt;- function(logpost, current, C, iter, ...){
+  S &lt;- rep(0, iter) # container for draws
+  n_accept &lt;- 0     # acceptance counter
+  
+  # Iterate through candidate draws
+  for(j in 1:iter){
+  candidate &lt;- runif(1, min = current - C, max = current + C)
+  prob &lt;- exp(logpost(candidate, ...) - 
+             logpost(current, ...))
+
+  if(is.nan(prob)) prob &lt;- 0 # deal with draws outside parameter space
+  
+  accept &lt;- ifelse(runif(1) &lt; prob, "yes", "no")
+  current &lt;- ifelse(accept == "yes", candidate, current)
+  S[j] &lt;- current
+  n_accept &lt;- n_accept + (accept == "yes")
+  }
+  
+  list(S=S, accept_rate=n_accept / iter) # Return draws and acceptance rate
+}
+```
+]
+
+---
+
+## Using `metropolis()`
+
+Writing the log-posterior function
+.code100[
+
+```r
+# Log posterior function
+log_posterior &lt;- function(.theta, samp) {
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+}
+```
+]
+
+Next, initialize `current`, `C`, `iter`, and pass in the necessary data as the last argument to `metropolis`:
+
+
+```r
+# Running the sampler
+set.seed(57948)                    # for reproducibility
+samp_stats &lt;- list(y = 3, n = 11)  # sample data
+mcmc_draws &lt;- metropolis(logpost = log_posterior, current = 0.5, C = 0.5, 
+                         iter = 1000, samp_stats)
+```
+
+---
+
+## Did the sampler work?
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-10-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Did the sampler work?
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-11-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+Now suppose we observed 300 successes and 800 failures and ran our Metropolis sampler (`current = 0.15`, `C = 0.5`)
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-12-1.svg" width="85%" style="display: block; margin: auto;" /&gt;
+ 
+.bold[
+Are you comfortable with this chain?
+]
+
+---
+
+How does the ACF plot look?
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-13-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+#### Setting `C = .1`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-14-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+#### Setting `C = .1`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-15-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+#### Setting `C = .05`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-16-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+#### Setting `C = .05`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-17-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+#### Setting `C = .005`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-18-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+#### Setting `C = .005`
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-19-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## If the sampler worked...
+
+Conduct inference just like when we had draws from the grid approximate posterior
+
+.pull-left[
+Credible intervals
+
+```r
+quantile(mcmc_draws$S, 
+         probs = c(0.05, 0.95))
+```
+
+```
+##        5%       95% 
+## 0.1441135 0.5304843
+```
+]
+
+.pull-right[
+Posterior probabilities
+
+```r
+mean(mcmc_draws$S &gt; 0.5)
+```
+
+```
+## [1] 0.088
+```
+
+]
+
+
+
+---
+
+## Example: Fluid breakdown
+
+
+- Engineers needed to understand how long machines can run before replacing oil in a factory
+
+- Collected viscosity breakdown times (in thousands of hours) for 50 samples
+
+
+&lt;img src="12-metropolis_files/figure-html/unnamed-chunk-22-1.svg" width="45%" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+## Model
+
+.large[
+
+Let `\(T_i\)` denote the breakdown time (thousands of hours) and `\(Y_i= \log(T_i)\)`
+
+.bold[Likelihood:]
+
+`\(\qquad T_i \overset{\rm iid}{\sim} {\rm LogNormal}(\mu, \sigma^2=.4) \Longrightarrow Y_i \overset{\rm iid}{\sim} {\rm Normal}(\mu, \sigma^2=.4)\)`
+
+
+.bold[Noninformative prior:] `\(\pi(\mu) \propto 1\)`
+&lt;br&gt;
+
+.bold[Posterior:]
+
+`$$p(\mu | \boldsymbol{y}) \propto \exp \left[ \sum_{i=1}^n -\frac{1}{2 (.4)} (y_i - \mu)^2\right]$$`
+]
+
+---
+class: inverse
+
+## Your turn
+
+1. Write a `log_posterior` function. Notice that you can use the `dnorm` function if you log the data.
+
+1. Run the `metropolis()` function to obtain draws from the (approximate) posterior distribution.
+
+1. Check the trace and ACF plots to see if your chain converged and if it's working efficiently.
+
+1. Repeat 2-3 until you're satisfied.
+
+1. Construct and interpret a 95% credible interval for the viscosity breakdown times.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

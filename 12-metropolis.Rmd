@@ -1,0 +1,504 @@
+---
+title: "The Metropolis algorithm"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg', error = FALSE)
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(tidyverse)
+library(glue)
+library(forecast) # for ggplot2 acf plot
+
+launches <- read.table("https://alysongwilson.github.io/BR/table21.txt", header = TRUE)
+
+## Metropolis function from the book
+metropolis <- function(logpost, current, C, iter, ...){
+  S <- rep(0, iter) 
+  n_accept <- 0
+  for(j in 1:iter){
+  candidate <- runif(1, min=current - C, 
+                       max=current + C)
+  prob <- exp(logpost(candidate, ...) - 
+             logpost(current, ...))
+  accept <- ifelse(runif(1) < prob, "yes", "no")
+  current <- ifelse(accept == "yes", 
+                    candidate, current)
+  S[j] <- current
+  n_accept <- n_accept + (accept == "yes")
+  }
+  list(S=S, accept_rate=n_accept / iter)
+}
+
+log_posterior <- function(.theta, samp) {
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+}
+```
+
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+
+## Big idea: Markov chain simulation
+
+**Situation:** Suppose that sampling from $\pi_n(\theta)$ is hard, but that we can (somehow) generate a Markov chain $\{\theta(t), t \in T\}$ with stationary distribution $\pi_n(\theta)$.
+
+- We know the the stationary distribution
+
+- We seek transitions $p(\theta^{(t+1)} | \theta ^{(t)} )$ that will take us to the stationary distribution
+
+
+---
+
+## Overview
+
+
+- Start from some initial guess $\theta^{(0)}$ and let the chain run for $n$
+steps ($n$ large), so that it reaches its stationary distribution
+
+- After convergence, all additional steps in the chain are draws from the
+stationary distribution $\pi_n(\theta)$
+
+- MCMC methods are all based on the this idea; difference is just in how
+the transitions in the MC are created
+
+
+---
+
+## Example: Launch failures
+
+.large[
+- FAA and USAF were interested in estimating the failure probability for new rockets launched by companies with limited experience
+
+- Goal is to assess prelaunch risk. 
+
+- Failures have significant on 
+
+    + public safety
+    
+    +  aerospace manufacturer's ability to develop and field new rocket systems.
+
+- Johnson et al. (2005) data from 1980-2002
+
+    + 11 launches: 3 successes, 8 failures
+]
+
+---
+
+## Model
+
+$Y= \#$ successful launches
+
+.bold[Likelihood:]
+Assuming trials are iid ${\rm Bernoulli} (\theta)$
+
+$$Y \sim {\rm Binomial}(n=11, \theta)$$
+
+.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
+
+.bold[Posterior:]
+
+$$p(\theta | y) \propto \begin{cases}
+\theta^3 (1-\theta)^8 & \text{if } 0.1 < \theta < 0.9\\
+0 & \text{otherwise.}\end{cases}$$
+
+
+*Is the posterior a density we know?*
+
+
+---
+
+## Metropolis algorithm
+
+1. Select a value $\theta^{(0)}$ where $\pi_n(\theta^{(0)}) > 0$
+
+1. Given the current draw $\theta^{(i)}$, propose a *candidate draw* $\theta^p \sim {\rm Unif}(\theta^{(i)}+C, \theta^{(i)}+C)$.
+
+1. Evaluate the (unnormalized) posterior at the current value: $\pi_n(\theta^{(i)})$.
+
+1. Evaluate the (unnormalized) posterior at the candidate: $\pi_n(\theta^{c})$.
+
+1. Accept candidate with probability $R = \min \left\{ \pi_n(\theta^{c} ) \big/ \pi_n(\theta^{(i)} ), 1 \right\}$.
+
+    * Draw $U \sim {\rm Unif}(0, 1)$, if $U<R$ set $\theta^{(i+1)} = \theta^{p}$
+    
+    * Otherwise, set $\theta^{(i+1)} = \theta^{(i)}$.
+
+---
+
+## Initial value: 0.5
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+post_curve <- function(.x) {
+  .x^3 * (1-.x)^(11-3)
+}
+
+post_curve_df <- tibble(
+  x = seq(.1, .9, by = .001),
+  y = post_curve(x)
+)
+
+pcurve <- ggplot(post_curve_df) +
+  geom_line(aes(x, y)) +
+  labs(x = expression(theta), y = "density")
+
+current <- 0.5
+const <- 0.2
+proposal_df <- tibble(
+  x = seq(current - const, current + const, by = 0.001),
+  y = 0
+)
+pcurve + 
+  geom_point(aes(x = current, y = post_curve(current)), color = "skyblue", size = 3) +
+  geom_line(data = proposal_df, aes(x = x, y = y), size = 2)
+```
+
+---
+
+## Propose 0.4, acceptance probability = 1
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+obs_data <- list(y = 3, n = 11)
+acc_prob <- exp(log_posterior(0.4, obs_data) - log_posterior(current, obs_data))
+acc_prob <- min(acc_prob, 1)
+pcurve + 
+  geom_point(aes(x = current, y = post_curve(current)), color = "skyblue", size = 3) +
+  geom_line(data = proposal_df, aes(x = x, y = y), size = 2) + 
+  geom_point(aes(x = 0.4, y = post_curve(.4)), color = "darkorange", size = 3) 
+```
+
+---
+
+## Update current draw
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+pcurve + 
+  geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) 
+```
+
+---
+
+## Propose 0.45, acceptance probability 0.71
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+current <- 0.4
+proposal_df <- tibble(
+  x = seq(current - const, current + const, by = 0.001),
+  y = 0
+)
+
+acc_prob <- exp(log_posterior(0.45, obs_data) - log_posterior(current, obs_data))
+acc_prob <- min(acc_prob, 1)
+
+pcurve + 
+  geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) +
+  geom_line(data = proposal_df, aes(x = x, y = y), size = 2) + 
+  geom_point(aes(x = 0.45, y = post_curve(.45)), color = "darkorange", size = 3) 
+```
+
+---
+
+## $U = 0.8$, retain current draw
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+pcurve + 
+  geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) 
+```
+
+---
+
+## Propose 0.58, acceptance probability 0.18
+
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+current <- 0.4
+proposal_df <- tibble(
+  x = seq(current - const, current + const, by = 0.001),
+  y = 0
+)
+
+acc_prob <- exp(log_posterior(0.58, obs_data) - log_posterior(current, obs_data))
+acc_prob <- min(acc_prob, 1)
+
+pcurve + 
+  geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) +
+  geom_line(data = proposal_df, aes(x = x, y = y), size = 2) + 
+  geom_point(aes(x = 0.58, y = post_curve(0.58)), color = "darkorange", size = 3) 
+```
+
+---
+
+## Metropolis function (Albert and Hu, p. 326)
+
+.code100[
+```{r}
+metropolis <- function(logpost, current, C, iter, ...){
+  S <- rep(0, iter) # container for draws
+  n_accept <- 0     # acceptance counter
+  
+  # Iterate through candidate draws
+  for(j in 1:iter){
+  candidate <- runif(1, min = current - C, max = current + C)
+  prob <- exp(logpost(candidate, ...) - 
+             logpost(current, ...))
+
+  if(is.nan(prob)) prob <- 0 # deal with draws outside parameter space
+  
+  accept <- ifelse(runif(1) < prob, "yes", "no")
+  current <- ifelse(accept == "yes", candidate, current)
+  S[j] <- current
+  n_accept <- n_accept + (accept == "yes")
+  }
+  
+  list(S=S, accept_rate=n_accept / iter) # Return draws and acceptance rate
+}
+```
+]
+
+---
+
+## Using `metropolis()`
+
+Writing the log-posterior function
+.code100[
+```{r}
+# Log posterior function
+log_posterior <- function(.theta, samp) {
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+}
+```
+]
+
+Next, initialize `current`, `C`, `iter`, and pass in the necessary data as the last argument to `metropolis`:
+
+```{r warning=FALSE}
+# Running the sampler
+set.seed(57948)                    # for reproducibility
+samp_stats <- list(y = 3, n = 11)  # sample data
+mcmc_draws <- metropolis(logpost = log_posterior, current = 0.5, C = 0.5, 
+                         iter = 1000, samp_stats)
+```
+
+---
+
+## Did the sampler work?
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggplot() +
+  geom_line(aes(x = seq_along(mcmc_draws$S), y = mcmc_draws$S)) +
+  labs(y = bquote(theta), x = "Iteration", 
+       caption = paste("Acceptance rate:", mcmc_draws$accept_rate)) +
+  theme_bw()
+```
+
+---
+
+## Did the sampler work?
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggAcf(mcmc_draws$S) +
+  labs(title = "MCMC draws") +
+  theme_bw()
+```
+
+---
+
+Now suppose we observed 300 successes and 800 failures and ran our Metropolis sampler (`current = 0.15`, `C = 0.5`)
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "85%", fig.align='center', warning=FALSE}
+samp_stats_big <- list(y = 300, n = 1100)  # sample data
+mcmc_draws_big <- metropolis(logpost = log_posterior, current = 0.15, C = 0.5, iter = 1000, samp_stats_big)
+
+ggplot() +
+  geom_line(aes(x = seq_along(mcmc_draws_big$S), y = mcmc_draws_big$S)) +
+  labs(y = bquote(theta), x = "Iteration", caption = paste("Acceptance rate:", mcmc_draws_big$accept_rate)) +
+  theme_bw()
+```
+ 
+.bold[
+Are you comfortable with this chain?
+]
+
+---
+
+How does the ACF plot look?
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggAcf(mcmc_draws_big$S) +
+  labs(title = "MCMC draws with C = .5") +
+  theme_bw()
+```
+
+
+---
+
+#### Setting `C = .1`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center', warning=FALSE}
+mcmc_draws_big <- metropolis(logpost = log_posterior, current = 0.15, C = 0.1, iter = 1000, samp_stats_big)
+
+ggplot() +
+  geom_line(aes(x = seq_along(mcmc_draws_big$S), y = mcmc_draws_big$S)) +
+  labs(y = bquote(theta), x = "Iteration", caption = paste("Acceptance rate:", mcmc_draws_big$accept_rate)) +
+  theme_bw()
+```
+
+---
+
+#### Setting `C = .1`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggAcf(mcmc_draws_big$S) +
+  labs(title = "MCMC draws with C = .5") +
+  theme_bw()
+```
+
+---
+
+#### Setting `C = .05`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center', warning=FALSE}
+mcmc_draws_big <- metropolis(logpost = log_posterior, current = 0.15, C = 0.05, iter = 1000, samp_stats_big)
+
+ggplot() +
+  geom_line(aes(x = seq_along(mcmc_draws_big$S), y = mcmc_draws_big$S)) +
+  labs(y = bquote(theta), x = "Iteration", caption = paste("Acceptance rate:", mcmc_draws_big$accept_rate)) +
+  theme_bw()
+```
+
+---
+
+#### Setting `C = .05`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggAcf(mcmc_draws_big$S) +
+  labs(title = "MCMC draws with C = .5") +
+  theme_bw()
+```
+
+
+---
+
+#### Setting `C = .005`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center', warning=FALSE}
+mcmc_draws_big <- metropolis(logpost = log_posterior, current = 0.15, C = 0.005, iter = 1000, samp_stats_big)
+
+ggplot() +
+  geom_line(aes(x = seq_along(mcmc_draws_big$S), y = mcmc_draws_big$S)) +
+  labs(y = bquote(theta), x = "Iteration", caption = paste("Acceptance rate:", mcmc_draws_big$accept_rate)) +
+  theme_bw()
+```
+
+---
+
+#### Setting `C = .005`
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, out.width = "95%", fig.align='center'}
+ggAcf(mcmc_draws_big$S) +
+  labs(title = "MCMC draws with C = .5") +
+  theme_bw()
+```
+
+---
+
+## If the sampler worked...
+
+Conduct inference just like when we had draws from the grid approximate posterior
+
+.pull-left[
+Credible intervals
+```{r}
+quantile(mcmc_draws$S, 
+         probs = c(0.05, 0.95))
+```
+]
+
+.pull-right[
+Posterior probabilities
+```{r}
+mean(mcmc_draws$S > 0.5)
+```
+
+]
+
+
+
+---
+
+## Example: Fluid breakdown
+
+
+- Engineers needed to understand how long machines can run before replacing oil in a factory
+
+- Collected viscosity breakdown times (in thousands of hours) for 50 samples
+
+
+```{r echo=FALSE, fig.height = 3, fig.width = 4, fig.align='center', out.width = "45%"}
+breakdown <- read.csv("https://alysongwilson.github.io/BR/table23.txt")
+ggplot(data = breakdown) +
+  geom_density(aes(x=Time), fill = "steelblue", alpha = 0.6) +
+  labs(x = "Breakdown time") +
+  theme_bw()
+```
+
+---
+
+
+## Model
+
+.large[
+
+Let $T_i$ denote the breakdown time (thousands of hours) and $Y_i= \log(T_i)$
+
+.bold[Likelihood:]
+
+$\qquad T_i \overset{\rm iid}{\sim} {\rm LogNormal}(\mu, \sigma^2=.4) \Longrightarrow Y_i \overset{\rm iid}{\sim} {\rm Normal}(\mu, \sigma^2=.4)$
+
+
+.bold[Noninformative prior:] $\pi(\mu) \propto 1$
+<br>
+
+.bold[Posterior:]
+
+$$p(\mu | \boldsymbol{y}) \propto \exp \left[ \sum_{i=1}^n -\frac{1}{2 (.4)} (y_i - \mu)^2\right]$$
+]
+
+---
+class: inverse
+
+## Your turn
+
+1. Write a `log_posterior` function. Notice that you can use the `dnorm` function if you log the data.
+
+1. Run the `metropolis()` function to obtain draws from the (approximate) posterior distribution.
+
+1. Check the trace and ACF plots to see if your chain converged and if it's working efficiently.
+
+1. Repeat 2-3 until you're satisfied.
+
+1. Construct and interpret a 95% credible interval for the viscosity breakdown times.
