@@ -153,7 +153,7 @@ $$p(\theta | y) \propto \begin{cases}
 
 ## Initial value: 0.5
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "95%", fig.align='center'}
 post_curve <- function(.x) {
   .x^3 * (1-.x)^(11-3)
 }
@@ -182,7 +182,7 @@ pcurve +
 
 ## Propose 0.4, acceptance probability = 1
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5,  out.width = "95%", fig.align='center'}
 obs_data <- list(y = 3, n = 11)
 acc_prob <- exp(log_posterior(0.4, obs_data) - log_posterior(current, obs_data))
 acc_prob <- min(acc_prob, 1)
@@ -196,7 +196,7 @@ pcurve +
 
 ## Update current draw
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5,  out.width = "95%", fig.align='center'}
 pcurve + 
   geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) 
 ```
@@ -205,7 +205,7 @@ pcurve +
 
 ## Propose 0.45, acceptance probability 0.71
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5,  out.width = "95%", fig.align='center'}
 current <- 0.4
 proposal_df <- tibble(
   x = seq(current - const, current + const, by = 0.001),
@@ -225,7 +225,7 @@ pcurve +
 
 ## $U = 0.8$, retain current draw
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5,  out.width = "95%", fig.align='center'}
 pcurve + 
   geom_point(aes(x = 0.4, y = post_curve(.4)), color = "skyblue", size = 3) 
 ```
@@ -234,7 +234,7 @@ pcurve +
 
 ## Propose 0.58, acceptance probability 0.18
 
-```{r echo=FALSE, fig.width = 5, fig.height = 2.5, out.width = "100%"}
+```{r echo=FALSE, fig.width = 5, fig.height = 2.5,  out.width = "95%", fig.align='center'}
 current <- 0.4
 proposal_df <- tibble(
   x = seq(current - const, current + const, by = 0.001),
