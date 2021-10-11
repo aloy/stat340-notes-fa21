@@ -1,11 +1,12 @@
 ---
 geometry: margin = 1in
-output: 
+output:
   html_document:
-    code_download: true
+    code_download: yes
+  pdf_document: default
 ---
 
-# The Metropolis algorith
+# The Metropolis algorithm
 ## Stat 340, Fall 2021
 
 
