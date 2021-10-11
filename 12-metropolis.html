@@ -43,7 +43,7 @@ class: title-slide, left, middle
 
 
 - Start from some initial guess `\(\theta^{(0)}\)` and let the chain run for `\(n\)`
-steps ($n$ large), so that it reaches its stationary distribution
+steps (*n* large), so that it reaches its stationary distribution
 
 - After convergence, all additional steps in the chain are draws from the
 stationary distribution `\(\pi_n(\theta)\)`
@@ -61,7 +61,7 @@ the transitions in the MC are created
 
 - Goal is to assess prelaunch risk. 
 
-- Failures have significant on 
+- Failures have significant impact on 
 
     + public safety
     
@@ -107,7 +107,7 @@ Assuming trials are iid `\({\rm Bernoulli} (\theta)\)`
 
 1. Evaluate the (unnormalized) posterior at the candidate: `\(\pi_n(\theta^{c})\)`.
 
-1. Accept candidate with probability `\(R = \min \left\{ \pi_n(\theta^{c} ) \big/ \pi_n(\theta^{(i)} ), 1 \right\}\)`.
+1. Accept candidate with probability `\(R = \min \left\{ \pi_n(\theta^{p} ) \big/ \pi_n(\theta^{(i)} ), 1 \right\}\)`.
 
     * Draw `\(U \sim {\rm Unif}(0, 1)\)`, if `\(U&lt;R\)` set `\(\theta^{(i+1)} = \theta^{p}\)`
     
@@ -277,17 +277,19 @@ How does the ACF plot look?
 
 Conduct inference just like when we had draws from the grid approximate posterior
 
+Toss out burn-in period first!
+
 .pull-left[
 Credible intervals
 
 ```r
-quantile(mcmc_draws$S, 
+quantile(mcmc_draws$S[-c(1:100)], 
          probs = c(0.05, 0.95))
 ```
 
 ```
 ##        5%       95% 
-## 0.1441135 0.5304843
+## 0.1437817 0.5318214
 ```
 ]
 
@@ -295,11 +297,11 @@ quantile(mcmc_draws$S,
 Posterior probabilities
 
 ```r
-mean(mcmc_draws$S &gt; 0.5)
+mean(mcmc_draws$S[-c(1:100)] &gt; 0.5)
 ```
 
 ```
-## [1] 0.088
+## [1] 0.09333333
 ```
 
 ]
