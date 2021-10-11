@@ -27,6 +27,13 @@ class: title-slide, left, middle
 ### Stat 340: Bayesian Statistics
 
 ---
+class: inverse
+
+# Your turn
+
+
+
+---
 
 ## Big idea: Markov chain simulation
 
@@ -189,7 +196,7 @@ Writing the log-posterior function
 ```r
 # Log posterior function
 log_posterior &lt;- function(.theta, samp) {
-  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9, log = TRUE)
 }
 ```
 ]
@@ -289,7 +296,7 @@ quantile(mcmc_draws$S[-c(1:100)],
 
 ```
 ##        5%       95% 
-## 0.1437817 0.5318214
+## 0.1575995 0.5324501
 ```
 ]
 
@@ -301,7 +308,7 @@ mean(mcmc_draws$S[-c(1:100)] &gt; 0.5)
 ```
 
 ```
-## [1] 0.09333333
+## [1] 0.1044444
 ```
 
 ]

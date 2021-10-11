@@ -1,9 +1,9 @@
 ---
 geometry: margin = 1in
 output:
+  pdf_document: default
   html_document:
     code_download: yes
-  pdf_document: default
 ---
 
 # The Metropolis algorithm
@@ -46,7 +46,7 @@ launches <- read.table("https://alysongwilson.github.io/BR/table21.txt", header 
 
 Your textbook authors provide an R function to implement a general Metropolis algorithm in R (see page 326). The below is an adapted version of that function where I added a "safety" check to ensure draws outside the parameter space couldn't be made.
 
-```{r eval=FALSE}
+```{r eval=TRUE}
 metropolis <- function(logpost, current, C, iter, ...){
   S <- rep(0, iter) # container for draws
   n_accept <- 0     # acceptance counter
@@ -90,21 +90,38 @@ breakdown <- read.csv("https://alysongwilson.github.io/BR/table23.txt")
 
 1. Write a `log_posterior` function. Notice that you can use the `dnorm` function if you log the data.
 
+*Solution:* Here's my function.
 ```{r}
-# put your log posterior code here
+log_post <- function(.mu, samp) {
+  sum(dnorm(samp$y, mean = .mu, sd = sqrt(0.4)))
+}
 ```
 
 
 2. Run the `metropolis()` function to obtain draws from the (approximate) posterior distribution.
 
+*Solution:* 
+First, I need to define $y$ as $\log(Time)$ based on the code for my log posterior above.
 ```{r}
-# Run metropolis here
+breakdown$y <- log(breakdown$Time)
 ```
+
+Next, we can use `metropolis()` with a starting value (`current`) and candidate distribution half-width (`C`). Here, I'm using 5000 draws and pass in the `breakdown` data frame directly.
+
+```{r}
+set.seed(1633972200)
+mcmc_draws <- metropolis(log_post, current = 2, C = 0.8, iter = 5000, breakdown)
+```
+
+When I was doing this, I already tuned `C` to get the acceptance rate in the 0.2 to 0.4 range.
 
 
 3. Check the trace and ACF plots to see if your chain converged and if it's working efficiently. To create a trace plot, you can use the following code chunk. Here `mcmc_draws` store the output from `metropolis()`.
 
-```{r eval=FALSE}
+*Solution:*
+
+```{r eval=TRUE, fig.width=6, fig.height = 2.5}
+library(ggplot2)
 ggplot() +
   geom_line(aes(x = seq_along(mcmc_draws$S), y = mcmc_draws$S)) +
   labs(y = bquote(theta), x = "Iteration", 
@@ -113,11 +130,23 @@ ggplot() +
 
 To create an ACF plot, you can use the `acf()` function:
 
-```{r eval=FALSE}
+```{r eval=TRUE, fig.width=6, fig.height = 2.5}
 acf(mcmc_draws$S, main = "MCMC draws")
 ```
 
+Overall, I don't see any big issues in the trace plot and the ACF plot decays quickly, so it looks like our chain has converged and that we are in a good spot.
 
 4. Repeat 2-3 until you're satisfied.
 
+*Solution:* I'm satisfied.
+
 5. Construct and interpret a 95% credible interval for the viscosity breakdown times.
+
+*Solution:* I'll toss out the first 500 as burn-in to be safe, but overall it looks like we're at approximately the stationary distribution.
+
+```{r}
+quantile(mcmc_draws$S, probs = c(0.025, 0.975))
+```
+
+Given the observed breakdown times, there is a 95% chance that the average breakdown time of the lubricating fluid is between `r round(quantile(mcmc_draws$S, probs = 0.025), 3)` and  `r round(quantile(mcmc_draws$S, probs = 0.975), 3)` thousand hours.
+

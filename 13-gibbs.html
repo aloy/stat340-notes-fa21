@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>The Gibbs sampler</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link href="libs/countdown/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown/countdown.js"></script>
+    <script src="libs/kePrint/kePrint.js"></script>
+    <link href="libs/lightable/lightable.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+class: clear, middle
+
+
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# The Gibbs sampler
+
+### Stat 340: Bayesian Statistics
+
+---
+class: inverse
+
+# Your turn
+
+.Large[
+Take a look at the four trace plots provided as an example. For each, determine
+
+1. whether the chain converged
+
+2. roughly how many iterations it took to converge
+]
+
+<div class="countdown" id="timer_6164a27c" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">03</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+---
+background-image: url(figs/15-converge-longer.png)
+background-position: right
+background-size: 53%
+class:inverse, middle
+
+.left-narrow[
+1. Did the chain converge?
+
+2. If so, how many iterations did it take?
+]
+
+---
+background-image: url(figs/15-converge-short.png)
+background-position: right
+background-size: 53%
+class:inverse, middle
+
+.left-narrow[
+1. Did the chain converge?
+
+2. If so, how many iterations did it take?
+]
+
+
+---
+background-image: url(figs/15-no-converge.png)
+background-position: right
+background-size: 53%
+class:inverse, middle
+
+.left-narrow[
+1. Did the chain converge?
+
+2. If so, how many iterations did it take?
+]
+
+---
+background-image: url(figs/15-questionable-converge.png)
+background-position: right
+background-size: 53%
+class:inverse, middle
+
+.left-narrow[
+1. Did the chain converge?
+
+2. If so, how many iterations did it take?
+]
+
+---
+class: middle
+
+# Simulating from a discrete bivariate distribution
+
+---
+
+## Example: Traffic
+
+The joint PMF of the number of cars (X) and the number of buses (Y ) per signal cycle at a proposed left-turn lane is given below
+
+.Large[
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; X=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Y=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 1 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 2 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.025 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.015 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.01 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.125 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.075 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.05 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.150 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.090 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.06 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.100 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.060 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.04 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+]
+
+---
+
+## Simulation process
+
+.pull-left[
+
+Condition on `\(X=1\)`, simulate a Y 
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; X=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Y=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 1 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 2 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.025 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.015 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.01 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.125 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.075 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.05 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.150 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.090 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.06 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.100 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.060 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.04 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+.code90[
+
+```r
+sample(0:5, size = 1, prob = bivariate[[2]])
+```
+
+```
+## [1] 3
+```
+]
+
+
+]
+
+--
+
+.pull-right[
+
+Condition on `\(Y=3\)`, simulate an X 
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; X=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Y=0 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 1 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; 2 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.025 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.015 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.01 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.125 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.075 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.05 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.150 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.090 &lt;/td&gt;
+   &lt;td style="text-align:right;background-color: skyblue !important;"&gt; 0.06 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.100 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.060 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.04 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.050 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.030 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.02 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+.code80[
+
+```r
+sample(0:2, size = 1, prob = bivariate[4,2:4])
+```
+
+```
+## [1] 1
+```
+]
+
+]
+
+---
+class: middle 
+
+# Simulating from a bivariate continuous distribution
+
+
+
+---
+
+## Change in the democratic vote
+
+- How did democratic share of the two party vote change from 2016 to 2020?
+
+- MIT Election Data and Science Lab has county-level election results
+
+- We'll look at the percent change in the two-party vote
+
+    `$$Y_i = 100\left(A_i / B_i - 1 \right)$$`
+
+  `\(A_i =\)` % of two-party vote cast for democrats in 2020
+    
+  `\(B_i =\)` % of two-party vote cast for democrats in 2016
+
+
+
+.footnote[MIT Election Data and Science Lab, "County Presidential Election Returns 2000-2020", https://doi.org/10.7910/DVN/VOQCHQ, Harvard Dataverse, V9]
+
+---
+
+## Hypothetical sample
+
+We'll work with a hypothetical sample of 100 counties
+
+
+
+.pull-left[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-8-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+`\(\overline{y} = 1.96\)`
+
+`\(n = 100\)`
+]
+
+---
+
+## Model
+
+`\(Y_i = 100(A_i/B_i - 1)\)`, the percent change in support
+
+.pull-left[
+$$
+`\begin{align}
+Y_i | \mu, \sigma &amp;\overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma) &amp; \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \phantom{text}\\
+\mu &amp; \sim \mathcal{N}(\mu_0, \sqrt{1/\sigma_0}) &amp;\\
+\phi = 1/\sigma^2 &amp; \sim {\rm Gamma}(a, b) &amp;\\
+\mu &amp;\perp \phi
+\end{align}`
+$$
+]
+
+--
+
+.pull-right[
+
+$$
+`\begin{align}
+\mu_0 &amp;= 0 &amp; \qquad \qquad \qquad \qquad \qquad \qquad \phantom{text}\\
+\phi_0 &amp;= 1/1000 &amp;\\
+a &amp;= 0.1 &amp;\\
+b &amp;= 0.1 &amp;\\
+\end{align}`
+$$
+
+These are very weak priors
+
+]
+
+
+---
+
+## Prior predictive check
+.left-wide[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-9-1.svg" width="85%" style="display: block; margin: auto;" /&gt;
+]
+
+
+If you don't think the priors induce a reasonable distribution on `\(Y\)`, then tweak the parameters (e.g. inflate `\(\sigma_0\)`)
+
+
+
+---
+
+## Posterior
+
+
+
+$$
+`\begin{align}
+\pi(\mu, \phi | y_1, \ldots, y_n) &amp;\propto \pi(\mu) \pi(\phi) \cdot \prod_{i=1}^n f(y_i | \mu, \sigma^2)\\
+  &amp;\propto \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right] \cdot \phi^{a-1} \exp\left[ -b\phi \right] \cdot \\
+  &amp;\quad  \prod_{i=1}^n \phi^{1/2} \exp\left[ - \dfrac{\phi}{2}(y_i - \mu)^2 \right]
+\end{align}`
+$$
+
+.bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
+How can we do this *efficiently* sample from this posteriorin two dimensions?
+]
+
+---
+
+## Two-stage Gibbs sampler
+
+
+
+.bold[Target:] samples from `\(\pi(\theta_1, \theta_2 |y_1, \ldots, y_n)\)`
+
+.bold[Algorithm:] 
+
+1. Set initial values for parameter values, `\(\boldsymbol{\theta}^{(0)} = \left(\theta^{(0)}_1, \theta^{(0)}_2 \right)\)`
+
+2. Draw `\(\theta_1^{(1)}\)` from `\(\pi(\theta_1 | \theta_2, y_1, \ldots, y_n)\)` 
+
+3. Draw `\(\theta_2^{(1)}\)` from `\(\pi(\theta_2 | \theta_1, y_1, \ldots, y_n)\)` 
+
+4. Repeat steps 2-3 `\(S\)` times
+
+After convergence, draws `\(\left( \theta_1^{(k)}, \theta_2^{(k)} \right)\)` are from the posterior distribution
+
+---
+background-image: url(figs/15-gibbs-anim.png)
+background-size: cover
+
+## [Animated Gibbs sampler](https://chi-feng.github.io/mcmc-demo/app.html?algorithm=GibbsSampling&amp;target=standard)
+
+
+---
+class: inverse
+
+# Your turn
+
+
+In our example, `\(\boldsymbol{\theta} = (\mu, \sigma^2)\)`
+
+Discuss with your neighbor .bolder[how] you would find the following conditional posterior distributions from the joint posterior:
+
+1. `\(\pi(\mu | \phi, y_1, \ldots, y_n)\)`
+
+1. `\(\pi(\phi | \mu, y_1, \ldots, y_n)\)`
+
+<div class="countdown" id="timer_6164a4ba" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+
+---
+
+## Full conditional distributions
+
+
+$$
+`\begin{align}
+\pi(\phi | y_1, \ldots, y_n, \mu) &amp; \propto \pi(\phi) f(y_1, \ldots, y_n | \phi, \mu)\\
+&amp; \propto \phi^{a-1} \exp\left[ -b\phi \right] \cdot \prod_{i=1}^n \phi^{1/2} \exp\left[ - \dfrac{\phi}{2}(y_i - \mu)^2 \right]\\
+&amp;= \phi^{a-1} \exp\left[ -b\phi \right] \cdot \phi^{n/2} \exp\left[ - \dfrac{\phi}{2} \sum_{i=1}^n (y_i - \mu)^2 \right]\\
+&amp;= \phi^{\left(n/2 + a \right) - 1} \exp\left[ -\phi \left\{ \frac{1}{2} \sum_{i=1}^n (y_i - \mu)^2 +b \right\} \right] 
+\end{align}`
+$$
+
+.large[
+.bold[
+Is this a distribution we have seen before?
+]
+]
+
+---
+
+
+.small[
+$$
+`\begin{align}
+\pi(\mu | \phi, y_1, \ldots, y_n) &amp;\propto \pi(\mu)  \prod_{i=1}^n f(y_i | \mu, \sigma^2)\\
+&amp;\propto \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right]  \cdot 
+  \prod_{i=1}^n \phi^{1/2} \exp\left[ - \dfrac{\phi}{2}(y_i - \mu)^2\right]\\
+&amp;= \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right]  \cdot \phi^{n/2} \exp \left[-\phi \left\{ \frac{1}{2} \sum_{i=1}^n (y_i - \mu)^2\right\}  \right]
+\end{align}`
+$$
+]
+
+.bold[Is this a distribution we know?]
+
+---
+
+## Getting ready to sample
+
+
+```r
+# Data
+y &lt;- select_county$pct_change_dem
+n &lt;- length(y)
+
+# Prior specification
+mu0  &lt;- 0
+phi0 &lt;- 1/ 1000
+a    &lt;- 0.1
+b    &lt;- 0.1
+
+# Initial parameter values
+mu &lt;- mean(y)
+s2 &lt;- var(y)
+phi &lt;- 1 / s2
+
+
+# Create empty S x p matrix for MCMC draws
+S                    &lt;- 10000
+mcmc_draws           &lt;- matrix(NA, nrow = S, ncol = 2)
+colnames(mcmc_draws) &lt;- c("mu", "phi")
+```
+
+---
+
+## Gibbs sampler
+
+
+```r
+for(i in 1:S) {
+  
+  # sample from mu | s2, y
+  A   &lt;- sum(y) * phi + mu0 * phi0
+  B   &lt;- n * phi + 1 * phi0
+  mu  &lt;- rnorm(1, A/B, 1/sqrt(B))
+  
+  # sample from s2 | mu, y
+  shape  &lt;- n / 2 + a
+  scale  &lt;- (sum((y - mu)^2) / 2) + b
+  phi     &lt;- rgamma(1, shape, scale)
+  
+  # Store the draws
+  mcmc_draws[i, ] &lt;- c(mu, phi)
+}
+```
+
+---
+
+## Did the chain converge?
+
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-13-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+Don't hesitate to snoop around with different `xlim`!
+
+---
+
+## Did the chain converge?
+
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-14-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## Posterior analysis
+
+.small[
+Toss out samples prior to convergence (this is called the *burn in* period)
+
+Draw inferences using the remaining MCMC samples just like we have all term
+]
+.code90[
+
+```r
+no_burn &lt;- mcmc_draws[-c(1:100),]
+```
+]
+
+
+.pull-left[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-16-1.svg" width="55%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-17-1.svg" width="55%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Posterior analysis
+
+.pull-left[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-18-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+&lt;img src="13-gibbs_files/figure-html/unnamed-chunk-19-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
+]
+
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt;   &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Mean &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; SD &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Q025 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Q975 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; mu &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.97 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.83 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.35 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3.60 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; sigma^2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 67.32 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 9.83 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 50.70 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 89.48 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+## *p*-stage Gibbs sampler
+
+.bold[Target:] samples from `\(\pi(\theta_1, \theta_2, \ldots, \theta_p | y_1, \ldots, y_n)\)`
+
+&lt;!-- .bold[Algorithm:]  --&gt;
+
+*1.* Set initial values for parameter values, `\(\boldsymbol{\theta}^{(0)} = \left(\theta^{(0)}_1, \theta^{(0)}_2, \ldots, \theta_p^{(0)} \right)\)`
+
+*2.* Draw `\(\theta_1^{(1)}\)` from `\(\pi(\theta_1 | \theta_2,\ldots, \theta_p, y_1, \ldots, y_n)\)` 
+
+*3.* Draw `\(\theta_2^{(1)}\)` from `\(\pi(\theta_2 | \theta_1, \theta_3,\ldots, \theta_p, y_1, \ldots, y_n)\)` 
+
+`\(\vdots\)`
+
+*p.* Draw `\(\theta_2^{(1)}\)` from `\(\pi(\theta_p | \theta_1,\ldots, \theta_{p-1}, y_1, \ldots, y_n)\)` 
+
+Repeat steps *2-p* `\(S\)` times
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

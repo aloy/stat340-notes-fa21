@@ -48,7 +48,7 @@ metropolis <- function(logpost, current, C, iter, ...){
 }
 
 log_posterior <- function(.theta, samp) {
-  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9, log = TRUE)
 }
 ```
 
@@ -288,7 +288,7 @@ Writing the log-posterior function
 ```{r}
 # Log posterior function
 log_posterior <- function(.theta, samp) {
-  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9)
+  dbinom(samp$y, size = samp$n, prob = .theta, log = TRUE) + dunif(.theta, 0.1, 0.9, log = TRUE)
 }
 ```
 ]
