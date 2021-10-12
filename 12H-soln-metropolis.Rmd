@@ -93,7 +93,7 @@ breakdown <- read.csv("https://alysongwilson.github.io/BR/table23.txt")
 *Solution:* Here's my function.
 ```{r}
 log_post <- function(.mu, samp) {
-  sum(dnorm(samp$y, mean = .mu, sd = sqrt(0.4)))
+  sum(dnorm(samp$y, mean = .mu, sd = sqrt(0.4), log = TRUE))
 }
 ```
 
