@@ -30,6 +30,8 @@ library(countdown)
 library(knitr)
 library(kableExtra)
 xaringanExtra::use_tachyons()
+xaringanExtra::use_freezeframe()
+
 
 library(here)
 votes <- read_csv(here("data", "pres_pct_change_2016_2020.csv"))
@@ -56,6 +58,28 @@ class: title-slide, left, middle
 # `r rmarkdown::metadata$title`
 
 ### `r rmarkdown::metadata$author`
+
+---
+class: middle 
+
+## 1. Gibbs sampler
+
+## 2. Convergence checks
+
+## 3. Inference using MCMC draws
+
+## (Problem topics 8, 10, 11)
+
+---
+
+## Metropolis algorithm
+
+
+```{r echo=FALSE}
+include_graphics("gifs/metropolis.gif")
+```
+
+
 
 ---
 class: inverse
@@ -250,7 +274,7 @@ $Y_i = 100(A_i/B_i - 1)$, the percent change in support
 $$
 \begin{align}
 Y_i | \mu, \sigma &\overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma) & \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \phantom{text}\\
-\mu & \sim \mathcal{N}(\mu_0, \sqrt{1/\sigma_0}) &\\
+\mu & \sim \mathcal{N}(\mu_0, \sqrt{1/\phi_0}) &\\
 \phi = 1/\sigma^2 & \sim {\rm Gamma}(a, b) &\\
 \mu &\perp \phi
 \end{align}
@@ -314,7 +338,7 @@ $$
 $$
 
 .bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
-How can we do this *efficiently* sample from this posteriorin two dimensions?
+How can we do this *efficiently* sample from this 2D posterior?
 ]
 
 ---
@@ -342,6 +366,7 @@ background-image: url(figs/15-gibbs-anim.png)
 background-size: cover
 
 ## [Animated Gibbs sampler](https://chi-feng.github.io/mcmc-demo/app.html?algorithm=GibbsSampling&target=standard)
+
 
 
 ---
@@ -386,6 +411,7 @@ Is this a distribution we have seen before?
 
 ---
 
+## Full conditional distributions
 
 .small[
 $$
@@ -393,7 +419,8 @@ $$
 \pi(\mu | \phi, y_1, \ldots, y_n) &\propto \pi(\mu)  \prod_{i=1}^n f(y_i | \mu, \sigma^2)\\
 &\propto \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right]  \cdot 
   \prod_{i=1}^n \phi^{1/2} \exp\left[ - \dfrac{\phi}{2}(y_i - \mu)^2\right]\\
-&= \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right]  \cdot \phi^{n/2} \exp \left[-\phi \left\{ \frac{1}{2} \sum_{i=1}^n (y_i - \mu)^2\right\}  \right]
+&= \exp \left[ - \dfrac{\phi_0}{2} (\mu - \mu_0)^2 \right]  \cdot \phi^{n/2} \exp \left[-\phi \left\{ \frac{1}{2} \sum_{i=1}^n (y_i - \mu)^2\right\}  \right]\\
+&\propto \exp\left[ -\frac{\phi_0 + n\phi}{2} \left\{ \mu - \frac{\mu_0 \phi_0 + n \overline{y} \phi}{\phi_0 + n\phi} \right\}^2 \right]
 \end{align}
 $$
 ]
@@ -411,7 +438,7 @@ n <- length(y)
 
 # Prior specification
 mu0  <- 0
-phi0 <- 1/ 1000
+phi0 <- 1/1000
 a    <- 0.1
 b    <- 0.1
 
@@ -422,7 +449,7 @@ phi <- 1 / s2
 
 
 # Create empty S x p matrix for MCMC draws
-S                    <- 10000
+S                    <- 5000
 mcmc_draws           <- matrix(NA, nrow = S, ncol = 2)
 colnames(mcmc_draws) <- c("mu", "phi")
 ```
@@ -442,12 +469,43 @@ for(i in 1:S) {
   # sample from s2 | mu, y
   shape  <- n / 2 + a
   scale  <- (sum((y - mu)^2) / 2) + b
-  phi     <- rgamma(1, shape, scale)
+  phi    <- rgamma(1, shape, scale)
   
   # Store the draws
   mcmc_draws[i, ] <- c(mu, phi)
 }
 ```
+
+---
+
+
+To get the joint posterior of interest, $\pi(\mu, \sigma | y_1, \ldots, y_n)$, transform $\phi$
+
+.pull-left[
+```{r echo=FALSE, fig.height = 4.5, fig.width = 4.5, out.width = "100%"}
+mcmc_draws %>%
+  as.data.frame() %>%
+  ggplot(aes(x = mu, y = phi)) +
+  geom_point(alpha = 0.2)  +
+  ylab(expression(phi)) +
+  xlab(expression(mu))
+```
+]
+
+--
+
+
+.pull-right[
+```{r echo=FALSE, fig.height = 4.5, fig.width = 4.5, out.width = "100%"}
+mcmc_draws %>%
+  as.data.frame() %>%
+  ggplot(aes(x = mu, y = sqrt(1/phi))) +
+  geom_point(alpha = 0.2) +
+  ylab(expression(sigma)) +
+  xlab(expression(mu))
+```
+]
+
 
 ---
 
@@ -515,7 +573,7 @@ as.data.frame(no_burn) %>%
 ## Posterior analysis
 
 .pull-left[
-```{r echo=FALSE, fig.height = 4.5, fig.width = 4.5, out.width = "65%", message=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.height = 3.75, fig.width = 3.75, out.width = "65%", message=FALSE, fig.align='center'}
 as.data.frame(no_burn) %>%
   ggplot() +
   geom_histogram(aes(x = mu, y = ..density..), alpha = 0.7) +
@@ -525,12 +583,12 @@ as.data.frame(no_burn) %>%
 ]
 
 .pull-right[
-```{r echo=FALSE, fig.height = 4.5, fig.width = 4.5, out.width = "65%", message=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.height = 3.75, fig.width = 3.75, out.width = "65%", message=FALSE, fig.align='center'}
 as.data.frame(no_burn) %>%
   ggplot() +
-  geom_histogram(aes(x = 1/phi, y = ..density..), alpha = 0.7) +
+  geom_histogram(aes(x = sqrt(1/phi), y = ..density..), alpha = 0.7) +
   theme_light() +
-  labs(title = bquote("Marginal posterior of" ~sigma^2), x = bquote(~sigma^2 ~"draws"))
+  labs(title = bquote("Marginal posterior of" ~sigma), x = bquote(~sigma ~"draws"))
 ```
 ]
 
@@ -538,10 +596,10 @@ as.data.frame(no_burn) %>%
 ```{r echo=FALSE, results = "asis"}
  output <- matrix(0,2,4)
  colnames(output) <- c("Mean", "SD", "Q025", "Q975")
- rownames(output) <- c("mu", "sigma^2")
+ rownames(output) <- c("mu", "sigma")
  
  keep.mu <- no_burn[,"mu"]
- keep.s2 <- 1/no_burn[,"phi"]
+ keep.s2 <- sqrt(1/no_burn[,"phi"])
 
  output[1, 1] <- mean(keep.mu)
  output[1, 2] <- sd(keep.mu)
