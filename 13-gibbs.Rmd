@@ -172,7 +172,7 @@ kable(bivariate)
 
 .pull-left[
 
-Condition on $X=1$, simulate a Y 
+Condition on $Y=0$, simulate an X 
 
 ```{r echo=FALSE}
 bivariate %>%
@@ -194,7 +194,7 @@ sample(0:5, size = 1, prob = bivariate[[2]])
 
 .pull-right[
 
-Condition on $Y=3$, simulate an X 
+Condition on $X=3$, simulate a Y 
 
 ```{r echo=FALSE}
 bivariate %>%
