@@ -1,0 +1,529 @@
+---
+title: "MCMC software"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+xaringanExtra::use_tachyons()
+library(runjags)
+library(coda)
+library(countdown)
+
+```
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+
+class: inverse
+
+# Your turn
+
+
+
+---
+
+# Summary of MCMC
+
+- With the combination of Gibbs and Metropolis
+sampling we can fit virtually any model
+
+- In some cases Bayesian computing is actually preferable
+to maximum likelihood analysis
+
+- In most cases Bayesian computing is slower
+
+- However, it is often worth the wait for improved uncertainty quantification and interpretability
+
+- In all cases it is important to carefully monitor convergence 
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# Why Just Another Gibbs Sampler (JAGS)?
+
+- You can fit virtually any model
+
+- You can call JAGS from R, allowing for plotting and
+data manipulation in R
+
+- It runs on all platforms: LINUX, Mac, Windows
+
+- There is a lot of help online
+
+- R has many built in packages for convergence diagnostics
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# How does JAGS work?
+
+
+- You specify the model by declaring the likelihood and priors
+
+- JAGS then sets up the MCMC sampler
+    + e.g., works out the full conditional distributions for all parameters
+
+- It returns MCMC samples in a matrix or array
+
+- It also automatically produces posterior summaries like
+means, credible sets, and convergence diagnostics
+
+- User’s manual: http://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf
+
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# Steps for any analysis using JAGS
+
+
+1. Specify the model as a string (or script)
+
+2. Define the data and the prior parameters
+
+3. Define initial values
+
+4. Draw posterior samples using `run.jags()` 
+
+5. Inspect/summarize the results using the `plot()` and `summary()`
+
+
+---
+
+# Example: Rocket launches
+
+$Y_i =$ 0 or 1 (failure/success)
+
+.bold[Likelihood:] $Y_i \overset{\rm iid}{\sim}{\rm Bernoulli} (\theta)$
+
+.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
+
+.bold[Posterior:]
+
+$$p(\theta | y) \propto \begin{cases}
+\theta^3 (1-\theta)^8 & \text{if } 0.1 < \theta < 0.9\\
+0 & \text{otherwise.}\end{cases}$$
+
+
+---
+
+## 0. Load runjags
+
+```{r message=FALSE}
+library(runjags)
+```
+
+---
+
+## 1. Specify the model as a string
+
+```{r}
+model_string <- "
+model{
+
+  # Likelihood
+  for(i in 1:n) {
+    y[i] ~ dbern(theta)
+  }
+  
+  # Prior
+  theta ~ dunif(a, b)
+}
+"
+```
+
+
+---
+
+## 2. Load the data and define prior parameters
+
+Loading the launch data
+```{r}
+launches <- read.table(
+  "https://alysongwilson.github.io/BR/table21.txt", 
+  header = TRUE
+)
+```
+
+Define list with data and prior parameters
+```{r}
+launch_data <- list(
+  y = launches$Outcome,
+  n = nrow(launches),
+  a = 0.1,
+  b = 0.9
+)
+```
+
+---
+
+## 3. Define initial values
+
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, #<<
+  n.chains = 1,
+  data = launch_data,
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, #<<
+  data = launch_data,
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- data a named list or data frame include the data and prior parameter values
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, #<<
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta", #<<
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+  adapt = 1000,  #<<
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+- `burnin` number of burnin iterations, NOT including the adaptive iterations
+]
+
+.right-narrow[
+```{r eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+  adapt = 1000,  
+  burnin = 5000, #<<
+  sample = 5000
+)
+```
+]
+
+---
+
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+- `burnin` number of burn-in iterations, NOT including the adaptive iterations
+- `sample` the total number of (additional) samples to draw
+]
+
+.right-narrow[
+```{r run-jags-launches, eval=FALSE}
+posterior <- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+  adapt = 1000,  
+  burnin = 5000, 
+  sample = 5000 #<<
+)
+```
+]
+
+---
+class: clear
+
+In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
+
+```{r run-jags-launches, eval=TRUE, echo=FALSE}
+```
+
+
+
+---
+
+```{r plot-posterior, fig.height = 4.5, fig.width = 8, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+svg("figs/plot-launch-posterior.svg", height = 4.5, width = 8)
+plot(posterior)
+dev.off()
+```
+
+background-image: url("figs/plot-launch-posterior.svg")
+background-size: 85%
+
+## 5. `plot(posterior)`
+
+
+
+---
+
+
+class: clear
+
+`runjags` objects are big lists
+
+```{r}
+names(posterior)
+```
+
+---
+
+`mcmc` element is a list of the actual draws
+
+```{r}
+head(posterior$mcmc)
+```
+
+---
+
+## 5. Inspect/summarize the results
+
+```{r}
+summary(posterior$mcmc[[1]])
+```
+
+
+---
+
+## `bayesplot`
+
+- provides a variety of `ggplot2`-based plotting functions for use after fitting Bayesian models
+
+- Visualizations of MCMC simulations and diagnostics *from any algorithm* (`mcmc_*`)
+
+- Graphical prior and posterior predictive checks (`ppc_*`)
+
+---
+
+## Convert to an `mcmc` object
+
+`bayesplot` requires objects to be of class `mcmc`
+
+You'll need to convert your output from `run.jags()`
+
+```{r collapse=TRUE}
+class(posterior)
+```
+
+```{r collapse=TRUE}
+post_mcmc <- as.mcmc(posterior)
+class(post_mcmc)
+```
+
+---
+
+## Trace plot
+
+```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+mcmc_trace(post_mcmc)
+```
+
+---
+
+## ACF plot
+
+```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+mcmc_acf(post_mcmc)
+```
+
+---
+
+## Posterior density plot
+
+```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+mcmc_dens(post_mcmc)
+```
+
+---
+
+## Plot equal-tail interval estimates
+
+```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+mcmc_areas(post_mcmc)
+```
+
+---
+
+class: inverse
+
+# Your turn
+
+.Large[.bold[How do we calculate the posterior probability that the proportion of successful launches is at least 0.5?]]
+
+.Large[.bold[Discuss with your neighbor.]]
+
+
+```{r echo=FALSE}
+countdown(1, 30)
+```
+
+
+---
+
+## Posterior inference for `runjags` objects
+
+What's the posterior probability that the proportion of successful launches is at least 0.5?
+
+```{r collapse=TRUE}
+mean(posterior$mcmc[[1]] >= 0.5)
+```
+
+--
+
+95% credible interval for $\theta$, the proportion of successful launches
+
+```{r collapse=TRUE}
+quantile(posterior$mcmc[[1]], probs = c(0.05, 0.95))
+```
+
+
+
+
+
+---
+
+class: inverse
+
+# Your turn
+
+.Large[.bolder[Work through the examples on the JAGS handout with a neighbor.]]
+
+.Large[.bolder[Check GitHub for a .Rmd template]]
+
+.Large[.bolder[https://github.com/aloy/math315-fall2019]]
+

@@ -67,7 +67,7 @@ Take a look at the four trace plots provided as an example. For each, determine
 2. roughly how many iterations it took to converge
 ]
 
-<div class="countdown" id="timer_616706b4" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_616898bf" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">03</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -475,7 +475,7 @@ Discuss with your neighbor .bolder[how] you would find the following conditional
 
 1. `\(\pi(\phi | \mu, y_1, \ldots, y_n)\)`
 
-<div class="countdown" id="timer_616707ab" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_616898c5" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">02</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -562,8 +562,8 @@ for(i in 1:S) {
   
   # sample from s2 | mu, y
   shape  &lt;- n / 2 + a
-  scale  &lt;- (sum((y - mu)^2) / 2) + b
-  phi    &lt;- rgamma(1, shape, scale)
+  rate  &lt;- (sum((y - mu)^2) / 2) + b
+  phi    &lt;- rgamma(1, shape, rate)
   
   # Store the draws
   mcmc_draws[i, ] &lt;- c(mu, phi)

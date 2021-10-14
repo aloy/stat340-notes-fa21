@@ -194,8 +194,8 @@ for(i in 1:S) {
   
   # sample from s2 | mu, y
   shape  <- n / 2 + a
-  scale  <- (sum((y - mu)^2) / 2) + b
-  phi    <- rgamma(1, shape, scale)
+  rate  <- (sum((y - mu)^2) / 2) + b
+  phi    <- rgamma(1, shape, rate = rate)
   
   # Store the draws
   mcmc_draws[i, ] <- c(mu, phi)

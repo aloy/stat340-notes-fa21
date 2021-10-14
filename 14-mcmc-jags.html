@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>MCMC software</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link href="libs/countdown/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown/countdown.js"></script>
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: middle, clear
+
+class: title-slide, left, middle
+
+
+# MCMC software
+
+### Stat 340: Bayesian Statistics
+
+---
+
+class: inverse
+
+# Your turn
+
+
+
+---
+
+# Summary of MCMC
+
+- With the combination of Gibbs and Metropolis
+sampling we can fit virtually any model
+
+- In some cases Bayesian computing is actually preferable
+to maximum likelihood analysis
+
+- In most cases Bayesian computing is slower
+
+- However, it is often worth the wait for improved uncertainty quantification and interpretability
+
+- In all cases it is important to carefully monitor convergence 
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# Why Just Another Gibbs Sampler (JAGS)?
+
+- You can fit virtually any model
+
+- You can call JAGS from R, allowing for plotting and
+data manipulation in R
+
+- It runs on all platforms: LINUX, Mac, Windows
+
+- There is a lot of help online
+
+- R has many built in packages for convergence diagnostics
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# How does JAGS work?
+
+
+- You specify the model by declaring the likelihood and priors
+
+- JAGS then sets up the MCMC sampler
+    + e.g., works out the full conditional distributions for all parameters
+
+- It returns MCMC samples in a matrix or array
+
+- It also automatically produces posterior summaries like
+means, credible sets, and convergence diagnostics
+
+- User’s manual: http://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf
+
+
+.footnote[Slide adapted from Brian Reich]
+
+---
+
+# Steps for any analysis using JAGS
+
+
+1. Specify the model as a string (or script)
+
+2. Define the data and the prior parameters
+
+3. Define initial values
+
+4. Draw posterior samples using `run.jags()` 
+
+5. Inspect/summarize the results using the `plot()` and `summary()`
+
+
+---
+
+# Example: Rocket launches
+
+`\(Y_i =\)` 0 or 1 (failure/success)
+
+.bold[Likelihood:] `\(Y_i \overset{\rm iid}{\sim}{\rm Bernoulli} (\theta)\)`
+
+.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
+
+.bold[Posterior:]
+
+`$$p(\theta | y) \propto \begin{cases}
+\theta^3 (1-\theta)^8 &amp; \text{if } 0.1 &lt; \theta &lt; 0.9\\
+0 &amp; \text{otherwise.}\end{cases}$$`
+
+
+---
+
+## 0. Load runjags
+
+
+```r
+library(runjags)
+```
+
+---
+
+## 1. Specify the model as a string
+
+
+```r
+model_string &lt;- "
+model{
+
+  # Likelihood
+  for(i in 1:n) {
+    y[i] ~ dbern(theta)
+  }
+  
+  # Prior
+  theta ~ dunif(a, b)
+}
+"
+```
+
+
+---
+
+## 2. Load the data and define prior parameters
+
+Loading the launch data
+
+```r
+launches &lt;- read.table(
+  "https://alysongwilson.github.io/BR/table21.txt", 
+  header = TRUE
+)
+```
+
+Define list with data and prior parameters
+
+```r
+launch_data &lt;- list(
+  y = launches$Outcome,
+  n = nrow(launches),
+  a = 0.1,
+  b = 0.9
+)
+```
+
+---
+
+## 3. Define initial values
+
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+* model = model_string,
+  n.chains = 1,
+  data = launch_data,
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+* n.chains = 1,
+  data = launch_data,
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- data a named list or data frame include the data and prior parameter values
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+* data = launch_data,
+  monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+* monitor = "theta",
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+* adapt = 1000,
+  burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+- `burnin` number of burnin iterations, NOT including the adaptive iterations
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+  adapt = 1000,  
+* burnin = 5000,
+  sample = 5000
+)
+```
+]
+
+---
+
+
+
+## 4. Draw posterior samples using `run.jags()` 
+
+.left-wide[
+- `model` string specifying the model
+- `n.chains` the number of chains to run
+- `data` data a named list or data frame include the data and prior parameter values
+- `monitor` character vector of the names of variables to monitor
+- `adapt` number of samples drawn during initial sampling/adaptation phase
+- `burnin` number of burn-in iterations, NOT including the adaptive iterations
+- `sample` the total number of (additional) samples to draw
+]
+
+.right-narrow[
+
+```r
+posterior &lt;- run.jags(
+  model = model_string, 
+  n.chains = 1, 
+  data = launch_data, 
+  monitor = "theta",
+  adapt = 1000,  
+  burnin = 5000, 
+* sample = 5000
+)
+```
+]
+
+---
+class: clear
+
+In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
+
+
+```
+## Compiling rjags model...
+## Calling the simulation using the rjags method...
+## Adapting the model for 1000 iterations...
+## 
+  |                                                        
+  |                                                  |   0%
+  |                                                        
+  |+                                                 |   2%
+  |                                                        
+  |++                                                |   4%
+  |                                                        
+  |+++                                               |   6%
+  |                                                        
+  |++++                                              |   8%
+  |                                                        
+  |+++++                                             |  10%
+  |                                                        
+  |++++++                                            |  12%
+  |                                                        
+  |+++++++                                           |  14%
+  |                                                        
+  |++++++++                                          |  16%
+  |                                                        
+  |+++++++++                                         |  18%
+  |                                                        
+  |++++++++++                                        |  20%
+  |                                                        
+  |+++++++++++                                       |  22%
+  |                                                        
+  |++++++++++++                                      |  24%
+  |                                                        
+  |+++++++++++++                                     |  26%
+  |                                                        
+  |++++++++++++++                                    |  28%
+  |                                                        
+  |+++++++++++++++                                   |  30%
+  |                                                        
+  |++++++++++++++++                                  |  32%
+  |                                                        
+  |+++++++++++++++++                                 |  34%
+  |                                                        
+  |++++++++++++++++++                                |  36%
+  |                                                        
+  |+++++++++++++++++++                               |  38%
+  |                                                        
+  |++++++++++++++++++++                              |  40%
+  |                                                        
+  |+++++++++++++++++++++                             |  42%
+  |                                                        
+  |++++++++++++++++++++++                            |  44%
+  |                                                        
+  |+++++++++++++++++++++++                           |  46%
+  |                                                        
+  |++++++++++++++++++++++++                          |  48%
+  |                                                        
+  |+++++++++++++++++++++++++                         |  50%
+  |                                                        
+  |++++++++++++++++++++++++++                        |  52%
+  |                                                        
+  |+++++++++++++++++++++++++++                       |  54%
+  |                                                        
+  |++++++++++++++++++++++++++++                      |  56%
+  |                                                        
+  |+++++++++++++++++++++++++++++                     |  58%
+  |                                                        
+  |++++++++++++++++++++++++++++++                    |  60%
+  |                                                        
+  |+++++++++++++++++++++++++++++++                   |  62%
+  |                                                        
+  |++++++++++++++++++++++++++++++++                  |  64%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++                 |  66%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++                |  68%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++               |  70%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++              |  72%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++             |  74%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++            |  76%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++           |  78%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++          |  80%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++++         |  82%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++++        |  84%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++++++       |  86%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++++++      |  88%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++++++++     |  90%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++++++++    |  92%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++++++++++   |  94%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++++++++++  |  96%
+  |                                                        
+  |+++++++++++++++++++++++++++++++++++++++++++++++++ |  98%
+  |                                                        
+  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100%
+## Burning in the model for 5000 iterations...
+## 
+  |                                                        
+  |                                                  |   0%
+  |                                                        
+  |*                                                 |   2%
+  |                                                        
+  |**                                                |   4%
+  |                                                        
+  |***                                               |   6%
+  |                                                        
+  |****                                              |   8%
+  |                                                        
+  |*****                                             |  10%
+  |                                                        
+  |******                                            |  12%
+  |                                                        
+  |*******                                           |  14%
+  |                                                        
+  |********                                          |  16%
+  |                                                        
+  |*********                                         |  18%
+  |                                                        
+  |**********                                        |  20%
+  |                                                        
+  |***********                                       |  22%
+  |                                                        
+  |************                                      |  24%
+  |                                                        
+  |*************                                     |  26%
+  |                                                        
+  |**************                                    |  28%
+  |                                                        
+  |***************                                   |  30%
+  |                                                        
+  |****************                                  |  32%
+  |                                                        
+  |*****************                                 |  34%
+  |                                                        
+  |******************                                |  36%
+  |                                                        
+  |*******************                               |  38%
+  |                                                        
+  |********************                              |  40%
+  |                                                        
+  |*********************                             |  42%
+  |                                                        
+  |**********************                            |  44%
+  |                                                        
+  |***********************                           |  46%
+  |                                                        
+  |************************                          |  48%
+  |                                                        
+  |*************************                         |  50%
+  |                                                        
+  |**************************                        |  52%
+  |                                                        
+  |***************************                       |  54%
+  |                                                        
+  |****************************                      |  56%
+  |                                                        
+  |*****************************                     |  58%
+  |                                                        
+  |******************************                    |  60%
+  |                                                        
+  |*******************************                   |  62%
+  |                                                        
+  |********************************                  |  64%
+  |                                                        
+  |*********************************                 |  66%
+  |                                                        
+  |**********************************                |  68%
+  |                                                        
+  |***********************************               |  70%
+  |                                                        
+  |************************************              |  72%
+  |                                                        
+  |*************************************             |  74%
+  |                                                        
+  |**************************************            |  76%
+  |                                                        
+  |***************************************           |  78%
+  |                                                        
+  |****************************************          |  80%
+  |                                                        
+  |*****************************************         |  82%
+  |                                                        
+  |******************************************        |  84%
+  |                                                        
+  |*******************************************       |  86%
+  |                                                        
+  |********************************************      |  88%
+  |                                                        
+  |*********************************************     |  90%
+  |                                                        
+  |**********************************************    |  92%
+  |                                                        
+  |***********************************************   |  94%
+  |                                                        
+  |************************************************  |  96%
+  |                                                        
+  |************************************************* |  98%
+  |                                                        
+  |**************************************************| 100%
+## Running the model for 5000 iterations...
+## 
+  |                                                        
+  |                                                  |   0%
+  |                                                        
+  |*                                                 |   2%
+  |                                                        
+  |**                                                |   4%
+  |                                                        
+  |***                                               |   6%
+  |                                                        
+  |****                                              |   8%
+  |                                                        
+  |*****                                             |  10%
+  |                                                        
+  |******                                            |  12%
+  |                                                        
+  |*******                                           |  14%
+  |                                                        
+  |********                                          |  16%
+  |                                                        
+  |*********                                         |  18%
+  |                                                        
+  |**********                                        |  20%
+  |                                                        
+  |***********                                       |  22%
+  |                                                        
+  |************                                      |  24%
+  |                                                        
+  |*************                                     |  26%
+  |                                                        
+  |**************                                    |  28%
+  |                                                        
+  |***************                                   |  30%
+  |                                                        
+  |****************                                  |  32%
+  |                                                        
+  |*****************                                 |  34%
+  |                                                        
+  |******************                                |  36%
+  |                                                        
+  |*******************                               |  38%
+  |                                                        
+  |********************                              |  40%
+  |                                                        
+  |*********************                             |  42%
+  |                                                        
+  |**********************                            |  44%
+  |                                                        
+  |***********************                           |  46%
+  |                                                        
+  |************************                          |  48%
+  |                                                        
+  |*************************                         |  50%
+  |                                                        
+  |**************************                        |  52%
+  |                                                        
+  |***************************                       |  54%
+  |                                                        
+  |****************************                      |  56%
+  |                                                        
+  |*****************************                     |  58%
+  |                                                        
+  |******************************                    |  60%
+  |                                                        
+  |*******************************                   |  62%
+  |                                                        
+  |********************************                  |  64%
+  |                                                        
+  |*********************************                 |  66%
+  |                                                        
+  |**********************************                |  68%
+  |                                                        
+  |***********************************               |  70%
+  |                                                        
+  |************************************              |  72%
+  |                                                        
+  |*************************************             |  74%
+  |                                                        
+  |**************************************            |  76%
+  |                                                        
+  |***************************************           |  78%
+  |                                                        
+  |****************************************          |  80%
+  |                                                        
+  |*****************************************         |  82%
+  |                                                        
+  |******************************************        |  84%
+  |                                                        
+  |*******************************************       |  86%
+  |                                                        
+  |********************************************      |  88%
+  |                                                        
+  |*********************************************     |  90%
+  |                                                        
+  |**********************************************    |  92%
+  |                                                        
+  |***********************************************   |  94%
+  |                                                        
+  |************************************************  |  96%
+  |                                                        
+  |************************************************* |  98%
+  |                                                        
+  |**************************************************| 100%
+## Simulation complete
+## Calculating summary statistics...
+```
+
+```
+## Warning: Convergence cannot be assessed with only 1 chain
+```
+
+```
+## Finished running the simulation
+```
+
+
+
+---
+
+
+
+background-image: url("figs/plot-launch-posterior.svg")
+background-size: 85%
+
+## 5. `plot(posterior)`
+
+
+
+---
+
+
+class: clear
+
+`runjags` objects are big lists
+
+
+```r
+names(posterior)
+```
+
+```
+##  [1] "mcmc"              "deviance.table"    "deviance.sum"     
+##  [4] "pd"                "end.state"         "samplers"         
+##  [7] "burnin"            "sample"            "thin"             
+## [10] "model"             "data"              "monitor"          
+## [13] "noread.monitor"    "modules"           "factories"        
+## [16] "response"          "residual"          "fitted"           
+## [19] "method"            "method.options"    "timetaken"        
+## [22] "runjags.version"   "summaries"         "summary"          
+## [25] "HPD"               "hpd"               "mcse"             
+## [28] "psrf"              "autocorr"          "crosscorr"        
+## [31] "truestochastic"    "semistochastic"    "nonstochastic"    
+## [34] "discrete"          "trace"             "density"          
+## [37] "histogram"         "ecdfplot"          "key"              
+## [40] "acplot"            "ccplot"            "summary.available"
+## [43] "summary.pars"      "dic"
+```
+
+---
+
+`mcmc` element is a list of the actual draws
+
+
+```r
+head(posterior$mcmc)
+```
+
+```
+## [[1]]
+## Markov Chain Monte Carlo (MCMC) output:
+## Start = 6001 
+## End = 6007 
+## Thinning interval = 1 
+##          theta
+## 6001 0.1554525
+## 6002 0.3176048
+## 6003 0.5248481
+## 6004 0.4620022
+## 6005 0.2848985
+## 6006 0.1072906
+## 6007 0.3272528
+## 
+## attr(,"class")
+## [1] "mcmc.list"
+```
+
+---
+
+## 5. Inspect/summarize the results
+
+
+```r
+summary(posterior$mcmc[[1]])
+```
+
+```
+## 
+## Iterations = 6001:11000
+## Thinning interval = 1 
+## Number of chains = 1 
+## Sample size per chain = 5000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##           Mean             SD       Naive SE Time-series SE 
+##       0.312473       0.119979       0.001697       0.002311 
+## 
+## 2. Quantiles for each variable:
+## 
+##   2.5%    25%    50%    75%  97.5% 
+## 0.1210 0.2195 0.2994 0.3906 0.5769
+```
+
+
+---
+
+## `bayesplot`
+
+- provides a variety of `ggplot2`-based plotting functions for use after fitting Bayesian models
+
+- Visualizations of MCMC simulations and diagnostics *from any algorithm* (`mcmc_*`)
+
+- Graphical prior and posterior predictive checks (`ppc_*`)
+
+---
+
+## Convert to an `mcmc` object
+
+`bayesplot` requires objects to be of class `mcmc`
+
+You'll need to convert your output from `run.jags()`
+
+
+```r
+class(posterior)
+## [1] "runjags"
+```
+
+
+```r
+post_mcmc &lt;- as.mcmc(posterior)
+class(post_mcmc)
+## [1] "mcmc"
+```
+
+---
+
+## Trace plot
+
+
+```r
+mcmc_trace(post_mcmc)
+```
+
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-16-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## ACF plot
+
+
+```r
+mcmc_acf(post_mcmc)
+```
+
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-17-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Posterior density plot
+
+
+```r
+mcmc_dens(post_mcmc)
+```
+
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-18-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Plot equal-tail interval estimates
+
+
+```r
+mcmc_areas(post_mcmc)
+```
+
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-19-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+
+---
+
+class: inverse
+
+# Your turn
+
+.Large[.bold[How do we calculate the posterior probability that the proportion of successful launches is at least 0.5?]]
+
+.Large[.bold[Discuss with your neighbor.]]
+
+
+<div class="countdown" id="timer_616885f8" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">01</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">30</span></code>
+</div>
+
+
+---
+
+## Posterior inference for `runjags` objects
+
+What's the posterior probability that the proportion of successful launches is at least 0.5?
+
+
+```r
+mean(posterior$mcmc[[1]] &gt;= 0.5)
+## [1] 0.0744
+```
+
+--
+
+95% credible interval for `\(\theta\)`, the proportion of successful launches
+
+
+```r
+quantile(posterior$mcmc[[1]], probs = c(0.05, 0.95))
+##        5%       95% 
+## 0.1386904 0.5329546
+```
+
+
+
+
+
+---
+
+class: inverse
+
+# Your turn
+
+.Large[.bolder[Work through the examples on the JAGS handout with a neighbor.]]
+
+.Large[.bolder[Check GitHub for a .Rmd template]]
+
+.Large[.bolder[https://github.com/aloy/math315-fall2019]]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
