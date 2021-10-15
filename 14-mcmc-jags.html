@@ -19,14 +19,76 @@
 
 
 
-class: middle, clear
-
 class: title-slide, left, middle
-
+background-image: url("img/run_mcmc.jpg")
+background-position: right
+background-size: 50%
 
 # MCMC software
 
 ### Stat 340: Bayesian Statistics
+
+
+---
+class: middle
+
+# Implementing MCMC in JAGS
+
+## (Problem topic 9)
+
+---
+
+## Example
+
+- Researchers are interested in modeling the survival times, measured in weeks, of patients who were diagnosed with leukemia. 
+
+- The patients were classified according to two characteristics of white bloods cells. 
+
+- The sample consists of `\(n=17\)` times in weeks from diagnosis to death
+
+  
+  ```r
+  survival_times &lt;- c(65, 156, 100, 134, 16, 108, 121, 4, 
+                        39, 143, 56, 26, 22, 1, 1, 5, 65)
+  ```
+
+---
+background-image: url(img/weibull_examples.png)
+background-position: bottom
+background-size: 65%
+
+## Weibull distribution
+
+Weibull distribution is often used as a model for survival times in biomedical, demographic, and engineering analyses
+
+.bold[PDF]: `\(f(y | v, \lambda) = \lambda \alpha y^{\alpha-1} e^{-\lambda y^{\alpha}}, \quad y, \alpha, \lambda &gt; 0\)`
+
+.bold[CDF]: `\(F(y | v, \lambda) = 1 - e^{-\lambda y^{\alpha}}\)`
+
+
+
+---
+
+## Proposed model
+
+.pull-left[
+Let `\(Y_i =\)` survival time in weeks
+
+`\(Y_i | \alpha, \lambda \overset{\rm iid}{\sim} {\rm Weibull}(\alpha, \lambda)\)`
+
+`\(\alpha \sim {\rm Gamma}(1, 1)\)`
+
+`\(\lambda \sim {\rm Gamma}(1.53, 26.3)\)`
+
+`\(\alpha \propto \lambda\)`
+]
+
+
+
+.pull-right[
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-3-1.svg" width="100%" /&gt;
+]
+
 
 ---
 
@@ -34,25 +96,22 @@ class: inverse
 
 # Your turn
 
+Weibull PDF: `\(f(y | v, \lambda) = \lambda \alpha y^{\alpha-1} e^{-\lambda y^{\alpha}}\)`
 
+Gamma PDF: `\(f(x | a, b) = \dfrac{b^a}{\Gamma(a)} x^{a-1} e^{-bx}\)`
 
----
+1. Derive the joint posterior distribution for] `\(\alpha\)` and `\(\lambda\)`
 
-# Summary of MCMC
+1. Derive the two conditional posterior distributions for this model
 
-- With the combination of Gibbs and Metropolis
-sampling we can fit virtually any model
+1. Are either distributions that you recognize?
 
-- In some cases Bayesian computing is actually preferable
-to maximum likelihood analysis
+1. If you get done, outline the steps of a Gibbs sampler for this posterior
 
-- In most cases Bayesian computing is slower
+<div class="countdown" id="timer_61697eae" style="right:0;bottom:0;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">05</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
 
-- However, it is often worth the wait for improved uncertainty quantification and interpretability
-
-- In all cases it is important to carefully monitor convergence 
-
-.footnote[Slide adapted from Brian Reich]
 
 ---
 
@@ -98,35 +157,19 @@ means, credible sets, and convergence diagnostics
 
 1. Specify the model as a string (or script)
 
-2. Define the data and the prior parameters
+2. Define/load the data
 
 3. Define initial values
 
 4. Draw posterior samples using `run.jags()` 
 
-5. Inspect/summarize the results using the `plot()` and `summary()`
+5. Inspect/summarize the results
 
 
 ---
+class: middle
 
-# Example: Rocket launches
-
-`\(Y_i =\)` 0 or 1 (failure/success)
-
-.bold[Likelihood:] `\(Y_i \overset{\rm iid}{\sim}{\rm Bernoulli} (\theta)\)`
-
-.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
-
-.bold[Posterior:]
-
-`$$p(\theta | y) \propto \begin{cases}
-\theta^3 (1-\theta)^8 &amp; \text{if } 0.1 &lt; \theta &lt; 0.9\\
-0 &amp; \text{otherwise.}\end{cases}$$`
-
-
----
-
-## 0. Load runjags
+## 0. Load `runjags`
 
 
 ```r
@@ -140,48 +183,68 @@ library(runjags)
 
 ```r
 model_string &lt;- "
-model{
-
-  # Likelihood
+model{ 
+  # Specify the likelihood
   for(i in 1:n) {
-    y[i] ~ dbern(theta)
+    y[i] ~ dweib(alpha, lambda)
   }
   
-  # Prior
-  theta ~ dunif(a, b)
+  # Specify the priors
+  alpha ~ dgamma(1, 1)
+  lambda ~ dgamma(1.53, 26.3)
 }
 "
 ```
 
+---
+background-image: url(img/distributions_jags.png)
+background-size: 68%
+background-position: right
+
+.left-narrow[
+
+## JAGS syntax
+
+JAGS doesn't always use &lt;br&gt; the same syntax as R.
+
+But, uses the same&lt;br&gt; `d*`, `q*`, and `p*` prefixes
+
+
+.footnote[Image source: JAGS manual]
+]
+
+
 
 ---
 
-## 2. Load the data and define prior parameters
+## 2. Define/load the data 
 
-Loading the launch data
+Loading the survival data
 
 ```r
-launches &lt;- read.table(
-  "https://alysongwilson.github.io/BR/table21.txt", 
-  header = TRUE
-)
+survival_times &lt;- c(65, 156, 100, 134, 16, 108, 121, 4, 
+                    39, 143, 56, 26, 22, 1, 1, 5, 65)
 ```
 
-Define list with data and prior parameters
+Store your data in a list
 
 ```r
-launch_data &lt;- list(
-  y = launches$Outcome,
-  n = nrow(launches),
-  a = 0.1,
-  b = 0.9
+survival_data &lt;- list(
+  y = survival_times,
+  n = length(survival_times)
 )
 ```
 
 ---
+
 
 ## 3. Define initial values
 
+- If you don't specify initial values for your parameters, then JAGS will 
+
+- If not specified,  then JAGS will use the mean or mode of the prior distribution
+
+- More on this next time...
 
 ---
 
@@ -197,8 +260,8 @@ launch_data &lt;- list(
 posterior &lt;- run.jags(
 * model = model_string,
   n.chains = 1,
-  data = launch_data,
-  monitor = "theta",
+  data = survival_data,
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -221,8 +284,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
 * n.chains = 1,
-  data = launch_data,
-  monitor = "theta",
+  data = survival_data,
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -237,7 +300,7 @@ posterior &lt;- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 ]
 
 .right-narrow[
@@ -246,8 +309,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
   n.chains = 1, 
-* data = launch_data,
-  monitor = "theta",
+* data = survival_data,
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -262,7 +325,7 @@ posterior &lt;- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 ]
 
@@ -272,8 +335,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-* monitor = "theta",
+  data = survival_data, 
+* monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -289,7 +352,7 @@ posterior &lt;- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
 ]
@@ -300,8 +363,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
 * adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -317,10 +380,10 @@ posterior &lt;- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
-- `burnin` number of burnin iterations, NOT including the adaptive iterations
+- `burnin` number of burn-in iterations, NOT including the adaptive iterations
 ]
 
 .right-narrow[
@@ -329,8 +392,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
   adapt = 1000,  
 * burnin = 5000,
   sample = 5000
@@ -347,7 +410,7 @@ posterior &lt;- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
 - `burnin` number of burn-in iterations, NOT including the adaptive iterations
@@ -360,8 +423,8 @@ posterior &lt;- run.jags(
 posterior &lt;- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
   adapt = 1000,  
   burnin = 5000, 
 * sample = 5000
@@ -379,317 +442,8 @@ In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
 ## Compiling rjags model...
 ## Calling the simulation using the rjags method...
 ## Adapting the model for 1000 iterations...
-## 
-  |                                                        
-  |                                                  |   0%
-  |                                                        
-  |+                                                 |   2%
-  |                                                        
-  |++                                                |   4%
-  |                                                        
-  |+++                                               |   6%
-  |                                                        
-  |++++                                              |   8%
-  |                                                        
-  |+++++                                             |  10%
-  |                                                        
-  |++++++                                            |  12%
-  |                                                        
-  |+++++++                                           |  14%
-  |                                                        
-  |++++++++                                          |  16%
-  |                                                        
-  |+++++++++                                         |  18%
-  |                                                        
-  |++++++++++                                        |  20%
-  |                                                        
-  |+++++++++++                                       |  22%
-  |                                                        
-  |++++++++++++                                      |  24%
-  |                                                        
-  |+++++++++++++                                     |  26%
-  |                                                        
-  |++++++++++++++                                    |  28%
-  |                                                        
-  |+++++++++++++++                                   |  30%
-  |                                                        
-  |++++++++++++++++                                  |  32%
-  |                                                        
-  |+++++++++++++++++                                 |  34%
-  |                                                        
-  |++++++++++++++++++                                |  36%
-  |                                                        
-  |+++++++++++++++++++                               |  38%
-  |                                                        
-  |++++++++++++++++++++                              |  40%
-  |                                                        
-  |+++++++++++++++++++++                             |  42%
-  |                                                        
-  |++++++++++++++++++++++                            |  44%
-  |                                                        
-  |+++++++++++++++++++++++                           |  46%
-  |                                                        
-  |++++++++++++++++++++++++                          |  48%
-  |                                                        
-  |+++++++++++++++++++++++++                         |  50%
-  |                                                        
-  |++++++++++++++++++++++++++                        |  52%
-  |                                                        
-  |+++++++++++++++++++++++++++                       |  54%
-  |                                                        
-  |++++++++++++++++++++++++++++                      |  56%
-  |                                                        
-  |+++++++++++++++++++++++++++++                     |  58%
-  |                                                        
-  |++++++++++++++++++++++++++++++                    |  60%
-  |                                                        
-  |+++++++++++++++++++++++++++++++                   |  62%
-  |                                                        
-  |++++++++++++++++++++++++++++++++                  |  64%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++                 |  66%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++                |  68%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++               |  70%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++              |  72%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++             |  74%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++            |  76%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++           |  78%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++          |  80%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++++         |  82%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++++        |  84%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++++++       |  86%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++++++      |  88%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++++++++     |  90%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++++++++    |  92%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++++++++++   |  94%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++++++++++  |  96%
-  |                                                        
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ |  98%
-  |                                                        
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100%
 ## Burning in the model for 5000 iterations...
-## 
-  |                                                        
-  |                                                  |   0%
-  |                                                        
-  |*                                                 |   2%
-  |                                                        
-  |**                                                |   4%
-  |                                                        
-  |***                                               |   6%
-  |                                                        
-  |****                                              |   8%
-  |                                                        
-  |*****                                             |  10%
-  |                                                        
-  |******                                            |  12%
-  |                                                        
-  |*******                                           |  14%
-  |                                                        
-  |********                                          |  16%
-  |                                                        
-  |*********                                         |  18%
-  |                                                        
-  |**********                                        |  20%
-  |                                                        
-  |***********                                       |  22%
-  |                                                        
-  |************                                      |  24%
-  |                                                        
-  |*************                                     |  26%
-  |                                                        
-  |**************                                    |  28%
-  |                                                        
-  |***************                                   |  30%
-  |                                                        
-  |****************                                  |  32%
-  |                                                        
-  |*****************                                 |  34%
-  |                                                        
-  |******************                                |  36%
-  |                                                        
-  |*******************                               |  38%
-  |                                                        
-  |********************                              |  40%
-  |                                                        
-  |*********************                             |  42%
-  |                                                        
-  |**********************                            |  44%
-  |                                                        
-  |***********************                           |  46%
-  |                                                        
-  |************************                          |  48%
-  |                                                        
-  |*************************                         |  50%
-  |                                                        
-  |**************************                        |  52%
-  |                                                        
-  |***************************                       |  54%
-  |                                                        
-  |****************************                      |  56%
-  |                                                        
-  |*****************************                     |  58%
-  |                                                        
-  |******************************                    |  60%
-  |                                                        
-  |*******************************                   |  62%
-  |                                                        
-  |********************************                  |  64%
-  |                                                        
-  |*********************************                 |  66%
-  |                                                        
-  |**********************************                |  68%
-  |                                                        
-  |***********************************               |  70%
-  |                                                        
-  |************************************              |  72%
-  |                                                        
-  |*************************************             |  74%
-  |                                                        
-  |**************************************            |  76%
-  |                                                        
-  |***************************************           |  78%
-  |                                                        
-  |****************************************          |  80%
-  |                                                        
-  |*****************************************         |  82%
-  |                                                        
-  |******************************************        |  84%
-  |                                                        
-  |*******************************************       |  86%
-  |                                                        
-  |********************************************      |  88%
-  |                                                        
-  |*********************************************     |  90%
-  |                                                        
-  |**********************************************    |  92%
-  |                                                        
-  |***********************************************   |  94%
-  |                                                        
-  |************************************************  |  96%
-  |                                                        
-  |************************************************* |  98%
-  |                                                        
-  |**************************************************| 100%
 ## Running the model for 5000 iterations...
-## 
-  |                                                        
-  |                                                  |   0%
-  |                                                        
-  |*                                                 |   2%
-  |                                                        
-  |**                                                |   4%
-  |                                                        
-  |***                                               |   6%
-  |                                                        
-  |****                                              |   8%
-  |                                                        
-  |*****                                             |  10%
-  |                                                        
-  |******                                            |  12%
-  |                                                        
-  |*******                                           |  14%
-  |                                                        
-  |********                                          |  16%
-  |                                                        
-  |*********                                         |  18%
-  |                                                        
-  |**********                                        |  20%
-  |                                                        
-  |***********                                       |  22%
-  |                                                        
-  |************                                      |  24%
-  |                                                        
-  |*************                                     |  26%
-  |                                                        
-  |**************                                    |  28%
-  |                                                        
-  |***************                                   |  30%
-  |                                                        
-  |****************                                  |  32%
-  |                                                        
-  |*****************                                 |  34%
-  |                                                        
-  |******************                                |  36%
-  |                                                        
-  |*******************                               |  38%
-  |                                                        
-  |********************                              |  40%
-  |                                                        
-  |*********************                             |  42%
-  |                                                        
-  |**********************                            |  44%
-  |                                                        
-  |***********************                           |  46%
-  |                                                        
-  |************************                          |  48%
-  |                                                        
-  |*************************                         |  50%
-  |                                                        
-  |**************************                        |  52%
-  |                                                        
-  |***************************                       |  54%
-  |                                                        
-  |****************************                      |  56%
-  |                                                        
-  |*****************************                     |  58%
-  |                                                        
-  |******************************                    |  60%
-  |                                                        
-  |*******************************                   |  62%
-  |                                                        
-  |********************************                  |  64%
-  |                                                        
-  |*********************************                 |  66%
-  |                                                        
-  |**********************************                |  68%
-  |                                                        
-  |***********************************               |  70%
-  |                                                        
-  |************************************              |  72%
-  |                                                        
-  |*************************************             |  74%
-  |                                                        
-  |**************************************            |  76%
-  |                                                        
-  |***************************************           |  78%
-  |                                                        
-  |****************************************          |  80%
-  |                                                        
-  |*****************************************         |  82%
-  |                                                        
-  |******************************************        |  84%
-  |                                                        
-  |*******************************************       |  86%
-  |                                                        
-  |********************************************      |  88%
-  |                                                        
-  |*********************************************     |  90%
-  |                                                        
-  |**********************************************    |  92%
-  |                                                        
-  |***********************************************   |  94%
-  |                                                        
-  |************************************************  |  96%
-  |                                                        
-  |************************************************* |  98%
-  |                                                        
-  |**************************************************| 100%
 ## Simulation complete
 ## Calculating summary statistics...
 ```
@@ -708,10 +462,11 @@ In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
 
 
 
-background-image: url("figs/plot-launch-posterior.svg")
-background-size: 85%
+background-image: url("figs/plot-survival-posterior1.svg"), url("figs/plot-survival-posterior2.svg")
+background-position: left bottom, right bottom
+background-size: 50%, 50%
 
-## 5. `plot(posterior)`
+## 5. Inspect the results
 
 
 
@@ -760,14 +515,14 @@ head(posterior$mcmc)
 ## Start = 6001 
 ## End = 6007 
 ## Thinning interval = 1 
-##          theta
-## 6001 0.1554525
-## 6002 0.3176048
-## 6003 0.5248481
-## 6004 0.4620022
-## 6005 0.2848985
-## 6006 0.1072906
-## 6007 0.3272528
+##          alpha     lambda
+## 6001 0.8868662 0.01977346
+## 6002 0.9252918 0.01395950
+## 6003 1.0516895 0.01721196
+## 6004 0.9212670 0.02472420
+## 6005 0.9250907 0.02964864
+## 6006 0.7915493 0.05146866
+## 6007 0.7406706 0.05755608
 ## 
 ## attr(,"class")
 ## [1] "mcmc.list"
@@ -775,14 +530,11 @@ head(posterior$mcmc)
 
 ---
 
-## 5. Inspect/summarize the results
+## 5. Summarize the results
 
 
 ```r
 summary(posterior$mcmc[[1]])
-```
-
-```
 ## 
 ## Iterations = 6001:11000
 ## Thinning interval = 1 
@@ -792,13 +544,15 @@ summary(posterior$mcmc[[1]])
 ## 1. Empirical mean and standard deviation for each variable,
 ##    plus standard error of the mean:
 ## 
-##           Mean             SD       Naive SE Time-series SE 
-##       0.312473       0.119979       0.001697       0.002311 
+##           Mean      SD  Naive SE Time-series SE
+## alpha  0.82868 0.13494 0.0019084       0.007950
+## lambda 0.04096 0.02484 0.0003512       0.001279
 ## 
 ## 2. Quantiles for each variable:
 ## 
-##   2.5%    25%    50%    75%  97.5% 
-## 0.1210 0.2195 0.2994 0.3906 0.5769
+##           2.5%     25%     50%    75%  97.5%
+## alpha  0.58207 0.73092 0.82469 0.9219 1.1017
+## lambda 0.00974 0.02251 0.03521 0.0537 0.1027
 ```
 
 
@@ -842,7 +596,7 @@ class(post_mcmc)
 mcmc_trace(post_mcmc)
 ```
 
-&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-16-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-20-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -853,7 +607,7 @@ mcmc_trace(post_mcmc)
 mcmc_acf(post_mcmc)
 ```
 
-&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-17-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-21-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -864,7 +618,7 @@ mcmc_acf(post_mcmc)
 mcmc_dens(post_mcmc)
 ```
 
-&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-18-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-22-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -875,7 +629,7 @@ mcmc_dens(post_mcmc)
 mcmc_areas(post_mcmc)
 ```
 
-&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-19-1.svg" width="57%" style="display: block; margin: auto;" /&gt;
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-23-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -883,12 +637,12 @@ class: inverse
 
 # Your turn
 
-.Large[.bold[How do we calculate the posterior probability that the proportion of successful launches is at least 0.5?]]
+.Large[.bold[The median survival time can be calculated as]] `\(\Large \left(\dfrac{\log(2)}{\lambda} \right)^{1/\alpha}\)`
 
-.Large[.bold[Discuss with your neighbor.]]
+.Large[.bold[How could you calculate a 90% credible interval for the median survival time?]]
 
 
-<div class="countdown" id="timer_616885f8" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_616980ec" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">01</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">30</span></code>
 </div>
 
@@ -897,26 +651,82 @@ class: inverse
 
 ## Posterior inference for `runjags` objects
 
-What's the posterior probability that the proportion of successful launches is at least 0.5?
+.code90[
+
+```r
+median_survive &lt;- (log(2) / posterior$mcmc[[1]][,"lambda"])^(1 / posterior$mcmc[[1]][,"alpha"])
+```
+]
+
+.pull-left[
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-26-1.svg" width="100%" /&gt;
+]
+
+.pull-right[
+90% credible interval for the median survival time
+
+.code90[
+
+```r
+quantile(median_survive, 
+         probs = c(0.05, 0.95))
+##       5%      95% 
+## 21.82081 60.24946
+```
+]
+]
+
+---
+
+## Monitoring functions of parameters
+
+You can create objects in JAGS using `&lt;-`
 
 
 ```r
-mean(posterior$mcmc[[1]] &gt;= 0.5)
-## [1] 0.0744
+model_string2 &lt;- "
+model{ 
+  # Specify the likelihood
+  for(i in 1:n) {
+    y[i] ~ dweib(alpha, lambda)
+  }
+  
+  # Specify the priors
+  alpha ~ dgamma(1, 1)
+  lambda ~ dgamma(1.53, 26.3)
+  
+  # Calculate median
+* median &lt;- (log(2) / lambda)^(1 / alpha)
+}
+"
 ```
 
---
+---
 
-95% credible interval for `\(\theta\)`, the proportion of successful launches
+## Monitoring functions of parameters
+
+You can monitor objects you create
 
 
 ```r
-quantile(posterior$mcmc[[1]], probs = c(0.05, 0.95))
-##        5%       95% 
-## 0.1386904 0.5329546
+posterior2 &lt;- run.jags(
+  model = model_string2,
+  n.chains = 1, 
+  data = survival_data, 
+* monitor = "median",
+  adapt = 1000,  
+  burnin = 5000, 
+  sample = 5000 
+)
 ```
 
+---
 
+
+
+## Did the chain converge?
+
+&lt;img src="14-mcmc-jags_files/figure-html/unnamed-chunk-29-1.svg" width="100%" /&gt;
 
 
 
@@ -926,11 +736,9 @@ class: inverse
 
 # Your turn
 
-.Large[.bolder[Work through the examples on the JAGS handout with a neighbor.]]
+.Large[.bolder[Work through the example on the JAGS handout with a neighbor.]]
 
-.Large[.bolder[Check GitHub for a .Rmd template]]
-
-.Large[.bolder[https://github.com/aloy/math315-fall2019]]
+.Large[.bolder[Check the website for a .Rmd template]]
 
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>

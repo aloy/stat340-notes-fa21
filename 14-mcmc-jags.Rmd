@@ -23,17 +23,103 @@ xaringanExtra::use_tachyons()
 library(runjags)
 library(coda)
 library(countdown)
-
+library(bayesplot)
+library(ggplot2)
 ```
 
-class: middle, clear
-
 class: title-slide, left, middle
-
+background-image: url("img/run_mcmc.jpg")
+background-position: right
+background-size: 50%
 
 # `r rmarkdown::metadata$title`
 
 ### `r rmarkdown::metadata$author`
+
+
+---
+class: middle
+
+# Implementing MCMC in JAGS
+
+## (Problem topic 9)
+
+---
+
+## Example
+
+- Researchers are interested in modeling the survival times, measured in weeks, of patients who were diagnosed with leukemia. 
+
+- The patients were classified according to two characteristics of white bloods cells. 
+
+- The sample consists of $n=17$ times in weeks from diagnosis to death
+
+  ```{r}
+  survival_times <- c(65, 156, 100, 134, 16, 108, 121, 4, 
+                        39, 143, 56, 26, 22, 1, 1, 5, 65)
+  ```
+
+---
+background-image: url(img/weibull_examples.png)
+background-position: bottom
+background-size: 65%
+
+## Weibull distribution
+
+Weibull distribution is often used as a model for survival times in biomedical, demographic, and engineering analyses
+
+.bold[PDF]: $f(y | v, \lambda) = \lambda \alpha y^{\alpha-1} e^{-\lambda y^{\alpha}}, \quad y, \alpha, \lambda > 0$
+
+.bold[CDF]: $F(y | v, \lambda) = 1 - e^{-\lambda y^{\alpha}}$
+
+
+
+---
+
+## Proposed model
+
+.pull-left[
+Let $Y_i =$ survival time in weeks
+
+$Y_i | \alpha, \lambda \overset{\rm iid}{\sim} {\rm Weibull}(\alpha, \lambda)$
+
+$\alpha \sim {\rm Gamma}(1, 1)$
+
+$\lambda \sim {\rm Gamma}(1.53, 26.3)$
+
+$\alpha \propto \lambda$
+]
+
+```{r echo=FALSE, message=FALSE, fig.height = 2.5, fig.width = 3.5, warning=FALSE, error=FALSE, include=FALSE}
+model_string <- "
+model{ 
+  alpha ~ dgamma(1, 1)
+  lambda ~ dgamma(1.53, 26.3)
+  y ~ dweib(alpha, lambda)
+}
+"
+
+prior_pred <- run.jags(
+  model = model_string, #<<
+  n.chains = 1,
+  data = NULL,
+  monitor = "y",
+  adapt = 0,
+  burnin = 0,
+  sample = 5000,
+  silent.jags = TRUE
+)
+```
+
+.pull-right[
+```{r echo=FALSE, message=FALSE, fig.height = 2.5, fig.width = 3.5, warning=FALSE, error=FALSE, out.width = "100%"}
+mcmc_dens(as.mcmc(prior_pred)) + 
+  xlim(c(0, 500)) + 
+  xlab("Surival time (weeks)") +
+  ggtitle("Prior predictive")
+```
+]
+
 
 ---
 
@@ -41,25 +127,22 @@ class: inverse
 
 # Your turn
 
+Weibull PDF: $f(y | v, \lambda) = \lambda \alpha y^{\alpha-1} e^{-\lambda y^{\alpha}}$
 
+Gamma PDF: $f(x | a, b) = \dfrac{b^a}{\Gamma(a)} x^{a-1} e^{-bx}$
 
----
+1. Derive the joint posterior distribution for] $\alpha$ and $\lambda$
 
-# Summary of MCMC
+1. Derive the two conditional posterior distributions for this model
 
-- With the combination of Gibbs and Metropolis
-sampling we can fit virtually any model
+1. Are either distributions that you recognize?
 
-- In some cases Bayesian computing is actually preferable
-to maximum likelihood analysis
+1. If you get done, outline the steps of a Gibbs sampler for this posterior
 
-- In most cases Bayesian computing is slower
+```{r echo=FALSE}
+countdown(5)
+```
 
-- However, it is often worth the wait for improved uncertainty quantification and interpretability
-
-- In all cases it is important to carefully monitor convergence 
-
-.footnote[Slide adapted from Brian Reich]
 
 ---
 
@@ -105,35 +188,19 @@ means, credible sets, and convergence diagnostics
 
 1. Specify the model as a string (or script)
 
-2. Define the data and the prior parameters
+2. Define/load the data
 
 3. Define initial values
 
 4. Draw posterior samples using `run.jags()` 
 
-5. Inspect/summarize the results using the `plot()` and `summary()`
+5. Inspect/summarize the results
 
 
 ---
+class: middle
 
-# Example: Rocket launches
-
-$Y_i =$ 0 or 1 (failure/success)
-
-.bold[Likelihood:] $Y_i \overset{\rm iid}{\sim}{\rm Bernoulli} (\theta)$
-
-.bold[Prior:] Elicitation leads to uniform on (0.1, 0.9)
-
-.bold[Posterior:]
-
-$$p(\theta | y) \propto \begin{cases}
-\theta^3 (1-\theta)^8 & \text{if } 0.1 < \theta < 0.9\\
-0 & \text{otherwise.}\end{cases}$$
-
-
----
-
-## 0. Load runjags
+## 0. Load `runjags`
 
 ```{r message=FALSE}
 library(runjags)
@@ -145,46 +212,66 @@ library(runjags)
 
 ```{r}
 model_string <- "
-model{
-
-  # Likelihood
+model{ 
+  # Specify the likelihood
   for(i in 1:n) {
-    y[i] ~ dbern(theta)
+    y[i] ~ dweib(alpha, lambda)
   }
   
-  # Prior
-  theta ~ dunif(a, b)
+  # Specify the priors
+  alpha ~ dgamma(1, 1)
+  lambda ~ dgamma(1.53, 26.3)
 }
 "
 ```
 
+---
+background-image: url(img/distributions_jags.png)
+background-size: 68%
+background-position: right
+
+.left-narrow[
+
+## JAGS syntax
+
+JAGS doesn't always use <br> the same syntax as R.
+
+But, uses the same<br> `d*`, `q*`, and `p*` prefixes
+
+
+.footnote[Image source: JAGS manual]
+]
+
+
 
 ---
 
-## 2. Load the data and define prior parameters
+## 2. Define/load the data 
 
-Loading the launch data
+Loading the survival data
 ```{r}
-launches <- read.table(
-  "https://alysongwilson.github.io/BR/table21.txt", 
-  header = TRUE
-)
+survival_times <- c(65, 156, 100, 134, 16, 108, 121, 4, 
+                    39, 143, 56, 26, 22, 1, 1, 5, 65)
 ```
 
-Define list with data and prior parameters
+Store your data in a list
 ```{r}
-launch_data <- list(
-  y = launches$Outcome,
-  n = nrow(launches),
-  a = 0.1,
-  b = 0.9
+survival_data <- list(
+  y = survival_times,
+  n = length(survival_times)
 )
 ```
 
 ---
+
 
 ## 3. Define initial values
 
+- If you don't specify initial values for your parameters, then JAGS will 
+
+- If not specified,  then JAGS will use the mean or mode of the prior distribution
+
+- More on this next time...
 
 ---
 
@@ -199,8 +286,8 @@ launch_data <- list(
 posterior <- run.jags(
   model = model_string, #<<
   n.chains = 1,
-  data = launch_data,
-  monitor = "theta",
+  data = survival_data,
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -222,8 +309,8 @@ posterior <- run.jags(
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, #<<
-  data = launch_data,
-  monitor = "theta",
+  data = survival_data,
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -238,7 +325,7 @@ posterior <- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 ]
 
 .right-narrow[
@@ -246,8 +333,8 @@ posterior <- run.jags(
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, #<<
-  monitor = "theta",
+  data = survival_data, #<<
+  monitor = c("alpha", "lambda"),
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -262,7 +349,7 @@ posterior <- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 ]
 
@@ -271,8 +358,8 @@ posterior <- run.jags(
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta", #<<
+  data = survival_data, 
+  monitor = c("alpha", "lambda"), #<<
   adapt = 1000,
   burnin = 5000,
   sample = 5000
@@ -288,7 +375,7 @@ posterior <- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
 ]
@@ -298,8 +385,8 @@ posterior <- run.jags(
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
   adapt = 1000,  #<<
   burnin = 5000,
   sample = 5000
@@ -315,10 +402,10 @@ posterior <- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
-- `burnin` number of burnin iterations, NOT including the adaptive iterations
+- `burnin` number of burn-in iterations, NOT including the adaptive iterations
 ]
 
 .right-narrow[
@@ -326,8 +413,8 @@ posterior <- run.jags(
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
   adapt = 1000,  
   burnin = 5000, #<<
   sample = 5000
@@ -344,7 +431,7 @@ posterior <- run.jags(
 .left-wide[
 - `model` string specifying the model
 - `n.chains` the number of chains to run
-- `data` data a named list or data frame include the data and prior parameter values
+- `data` a named list or data frame include the data and prior parameter values
 - `monitor` character vector of the names of variables to monitor
 - `adapt` number of samples drawn during initial sampling/adaptation phase
 - `burnin` number of burn-in iterations, NOT including the adaptive iterations
@@ -352,12 +439,12 @@ posterior <- run.jags(
 ]
 
 .right-narrow[
-```{r run-jags-launches, eval=FALSE}
+```{r run-jags, eval=FALSE}
 posterior <- run.jags(
   model = model_string, 
   n.chains = 1, 
-  data = launch_data, 
-  monitor = "theta",
+  data = survival_data, 
+  monitor = c("alpha", "lambda"),
   adapt = 1000,  
   burnin = 5000, 
   sample = 5000 #<<
@@ -370,7 +457,7 @@ class: clear
 
 In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
 
-```{r run-jags-launches, eval=TRUE, echo=FALSE}
+```{r run-jags, eval=TRUE, echo=FALSE}
 ```
 
 
@@ -378,15 +465,20 @@ In an .Rmd file, add `silent.jags = TRUE` to avoid this issue...
 ---
 
 ```{r plot-posterior, fig.height = 4.5, fig.width = 8, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
-svg("figs/plot-launch-posterior.svg", height = 4.5, width = 8)
-plot(posterior)
+svg("figs/plot-survival-posterior1.svg", height = 6, width = 6)
+plot(posterior, vars = "alpha", plot.type = c("trace", "ecdf", "histogram", "autocorr"))
+dev.off()
+
+svg("figs/plot-survival-posterior2.svg", height = 6, width = 6)
+plot(posterior, vars = "lambda", plot.type = c("trace", "ecdf", "histogram", "autocorr"))
 dev.off()
 ```
 
-background-image: url("figs/plot-launch-posterior.svg")
-background-size: 85%
+background-image: url("figs/plot-survival-posterior1.svg"), url("figs/plot-survival-posterior2.svg")
+background-position: left bottom, right bottom
+background-size: 50%, 50%
 
-## 5. `plot(posterior)`
+## 5. Inspect the results
 
 
 
@@ -411,9 +503,9 @@ head(posterior$mcmc)
 
 ---
 
-## 5. Inspect/summarize the results
+## 5. Summarize the results
 
-```{r}
+```{r collapse=TRUE}
 summary(posterior$mcmc[[1]])
 ```
 
@@ -449,7 +541,7 @@ class(post_mcmc)
 
 ## Trace plot
 
-```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+```{r fig.height = 3.5, fig.width = 7, out.width = "80%", fig.align='center'}
 mcmc_trace(post_mcmc)
 ```
 
@@ -457,7 +549,7 @@ mcmc_trace(post_mcmc)
 
 ## ACF plot
 
-```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+```{r fig.height = 3.5, fig.width = 7, out.width = "80%", fig.align='center'}
 mcmc_acf(post_mcmc)
 ```
 
@@ -465,7 +557,7 @@ mcmc_acf(post_mcmc)
 
 ## Posterior density plot
 
-```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+```{r fig.height = 3.5, fig.width = 7, out.width = "80%", fig.align='center'}
 mcmc_dens(post_mcmc)
 ```
 
@@ -473,7 +565,7 @@ mcmc_dens(post_mcmc)
 
 ## Plot equal-tail interval estimates
 
-```{r fig.height = 3.5, fig.width = 5, out.width = "57%", fig.align='center'}
+```{r fig.height = 3.5, fig.width = 7, out.width = "80%", fig.align='center'}
 mcmc_areas(post_mcmc)
 ```
 
@@ -483,9 +575,9 @@ class: inverse
 
 # Your turn
 
-.Large[.bold[How do we calculate the posterior probability that the proportion of successful launches is at least 0.5?]]
+.Large[.bold[The median survival time can be calculated as]] $\Large \left(\dfrac{\log(2)}{\lambda} \right)^{1/\alpha}$
 
-.Large[.bold[Discuss with your neighbor.]]
+.Large[.bold[How could you calculate a 90% credible interval for the median survival time?]]
 
 
 ```{r echo=FALSE}
@@ -497,21 +589,84 @@ countdown(1, 30)
 
 ## Posterior inference for `runjags` objects
 
-What's the posterior probability that the proportion of successful launches is at least 0.5?
+.code90[
+```{r}
+median_survive <- (log(2) / posterior$mcmc[[1]][,"lambda"])^(1 / posterior$mcmc[[1]][,"alpha"])
+```
+]
 
+.pull-left[
+```{r echo=FALSE, fig.height=2, fig.width=3.5, message=FALSE, out.width = "100%"}
+ggplot() + 
+  geom_histogram(aes(x = median_survive, y = ..density..)) +
+  labs(x = "median survival time (weeks)")
+```
+]
+
+.pull-right[
+90% credible interval for the median survival time
+
+.code90[
 ```{r collapse=TRUE}
-mean(posterior$mcmc[[1]] >= 0.5)
+quantile(median_survive, 
+         probs = c(0.05, 0.95))
+```
+]
+]
+
+---
+
+## Monitoring functions of parameters
+
+You can create objects in JAGS using `<-`
+
+```{r}
+model_string2 <- "
+model{ 
+  # Specify the likelihood
+  for(i in 1:n) {
+    y[i] ~ dweib(alpha, lambda)
+  }
+  
+  # Specify the priors
+  alpha ~ dgamma(1, 1)
+  lambda ~ dgamma(1.53, 26.3)
+  
+  # Calculate median
+  median <- (log(2) / lambda)^(1 / alpha) #<<
+}
+"
 ```
 
---
+---
 
-95% credible interval for $\theta$, the proportion of successful launches
+## Monitoring functions of parameters
 
-```{r collapse=TRUE}
-quantile(posterior$mcmc[[1]], probs = c(0.05, 0.95))
+You can monitor objects you create
+
+```{r run-jags2, eval=FALSE}
+posterior2 <- run.jags(
+  model = model_string2,
+  n.chains = 1, 
+  data = survival_data, 
+  monitor = "median", #<<
+  adapt = 1000,  
+  burnin = 5000, 
+  sample = 5000 
+)
 ```
 
+---
 
+```{r run-jags2, include=FALSE}
+```
+
+## Did the chain converge?
+
+```{r echo=FALSE, fig.height = 3, fig.width = 9, out.width = "100%"}
+posterior2 <- as.mcmc(posterior2)
+mcmc_combo(posterior2, combo = c("dens", "trace", "acf"))
+```
 
 
 
@@ -521,9 +676,7 @@ class: inverse
 
 # Your turn
 
-.Large[.bolder[Work through the examples on the JAGS handout with a neighbor.]]
+.Large[.bolder[Work through the example on the JAGS handout with a neighbor.]]
 
-.Large[.bolder[Check GitHub for a .Rmd template]]
-
-.Large[.bolder[https://github.com/aloy/math315-fall2019]]
+.Large[.bolder[Check the website for a .Rmd template]]
 
