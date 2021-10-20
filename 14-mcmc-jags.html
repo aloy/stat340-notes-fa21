@@ -108,7 +108,7 @@ Gamma PDF: `\(f(x | a, b) = \dfrac{b^a}{\Gamma(a)} x^{a-1} e^{-bx}\)`
 
 1. If you get done, outline the steps of a Gibbs sampler for this posterior
 
-<div class="countdown" id="timer_61697eae" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_616f7f49" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">05</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -515,14 +515,14 @@ head(posterior$mcmc)
 ## Start = 6001 
 ## End = 6007 
 ## Thinning interval = 1 
-##          alpha     lambda
-## 6001 0.8868662 0.01977346
-## 6002 0.9252918 0.01395950
-## 6003 1.0516895 0.01721196
-## 6004 0.9212670 0.02472420
-## 6005 0.9250907 0.02964864
-## 6006 0.7915493 0.05146866
-## 6007 0.7406706 0.05755608
+##          alpha      lambda
+## 6001 1.0542470 0.011208754
+## 6002 1.0602376 0.007055187
+## 6003 1.0483319 0.011747001
+## 6004 0.9941455 0.012446036
+## 6005 0.9949016 0.017376234
+## 6006 1.0077964 0.017242700
+## 6007 0.9428700 0.020903366
 ## 
 ## attr(,"class")
 ## [1] "mcmc.list"
@@ -545,14 +545,14 @@ summary(posterior$mcmc[[1]])
 ##    plus standard error of the mean:
 ## 
 ##           Mean      SD  Naive SE Time-series SE
-## alpha  0.82868 0.13494 0.0019084       0.007950
-## lambda 0.04096 0.02484 0.0003512       0.001279
+## alpha  0.83609 0.14374 0.0020328       0.009228
+## lambda 0.04033 0.02524 0.0003569       0.001303
 ## 
 ## 2. Quantiles for each variable:
 ## 
-##           2.5%     25%     50%    75%  97.5%
-## alpha  0.58207 0.73092 0.82469 0.9219 1.1017
-## lambda 0.00974 0.02251 0.03521 0.0537 0.1027
+##            2.5%     25%     50%     75%  97.5%
+## alpha  0.582190 0.73433 0.82705 0.92498 1.1354
+## lambda 0.008186 0.02199 0.03456 0.05285 0.1044
 ```
 
 
@@ -642,7 +642,7 @@ class: inverse
 .Large[.bold[How could you calculate a 90% credible interval for the median survival time?]]
 
 
-<div class="countdown" id="timer_616980ec" style="right:0;bottom:0;" data-warnwhen="0">
+<div class="countdown" id="timer_616f7f86" style="right:0;bottom:0;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">01</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">30</span></code>
 </div>
 
@@ -671,7 +671,7 @@ median_survive &lt;- (log(2) / posterior$mcmc[[1]][,"lambda"])^(1 / posterior$mc
 quantile(median_survive, 
          probs = c(0.05, 0.95))
 ##       5%      95% 
-## 21.82081 60.24946
+## 22.04899 60.97132
 ```
 ]
 ]

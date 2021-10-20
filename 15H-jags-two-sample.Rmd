@@ -1,15 +1,19 @@
 ---
-title: "Gibbs sampler example"
-author: "Math 315, Fall 2019"
 geometry: margin=.8in 
 output: pdf_document
 ---
+
+## Running MCMC in JAGS via `runjags` -- Another example
+
+### Stat 340, Fall 2021
+
 
 \pagenumbering{gobble}
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(runjags)
 ```
 
 ## Do Distracting Colors Influence the Time to Complete a Game?
@@ -38,101 +42,131 @@ $$
 \begin{aligned}
 Y_i &\overset{\rm iid}{\sim} \mathcal{N}(\mu, \sigma^2), \ i = 1, \ldots, 20 & \text{(standard group)}\\
 Y_j &\overset{\rm iid}{\sim} \mathcal{N}(\mu + \delta, \sigma^2), \ j = 21, \ldots, 40 & \text{(color group)}\\
-\mu &\sim \mathcal{N}(0, 100^2)\\
-\delta &\sim \mathcal{N}(0, 100^2)\\
-\sigma^2 &\sim {\rm InvGamma}(0.01, 0.01)\\
+\mu &\sim \mathcal{N}(0, 100)\\
+\delta &\sim \mathcal{N}(0, 100)\\
+1/\sigma^2 &\sim {\rm Gamma}(0.01, 0.01)\\
 \end{aligned}
 $$
-where $\mu$, $\delta$, and $\sigma^2$ are assumed to be mutually independent.
+where $\mu$, $\delta$, and $\sigma^2$ are assumed to be mutually independent. 
+
+
+1. Use the below code to load the data and prepare it for use with JAGS.
+
+    ```{r}
+# Split dataa into standard (std) and color (col) groups
+y <- stroop$Time
+y.std <- y[stroop$Type == "Standard"]
+y.col <- y[stroop$Type == "Color"]
+n <- length(y.std)
+m <- length(y.col)
+
+# Create a list of data for the model
+stroop_data <- list(y.std = y.std, y.col = y.col, n = n, m = m)
+```
+
+
+1. Complete the model below for this situation.
+
+    ```{r}
+stroop_model_string <- "
+model{
+  # Specify the likelihood for the standard group
+  for(i in 1:n) {
+    y.std[i] ~ ___(mu, phi)
+  }
+  
+  # Specify the likelihood for the color group
+  for(j in 1:m) {
+    y.col[j] ~ ___(mu + delta, phi)
+  }
+
+  # Specify the prior distributions
+  mu ~ ___(0, 1 / pow(100, 2))      # pow(100, 2) calculates 100^2
+  delta ~ ___(0, 1 / pow(100, 2))
+  phi ~ ___(.01, .01)
+
+  # Calculate sigma from phi
+  sigma <- ___ / sqrt(___)
+}"
+```
+
+```{r include=FALSE}
+stroop_model_string <- "
+model{
+  # Specify the likelihood for the standard group
+  for(i in 1:n) {
+    y.std[i] ~ dnorm(mu, phi)
+  }
+  
+  # Specify the likelihood for the color group
+  for(j in 1:m) {
+    y.col[j] ~ dnorm(mu + delta, phi)
+  }
+
+  # Specify the prior distributions
+  mu ~ dnorm(0, 1 / pow(100, 2))      # pow(100, 2) calculates 100^2
+  delta ~ dnorm(0, 1 / pow(100, 2))
+  phi ~ dgamma(.01, .01)
+
+  # Calculate sigma from phi
+  sigma <- 1 / sqrt(phi)
+}"
+```
+
+1. Use `run.jags()` to obtain 5000 draws from the joint posterior distribution of $\mu$, $\delta$, and $\sigma$. Use a burn-in period of 1000 draws, and an adaptation phase of 1000 draws.
+
+```{r include=FALSE}
+library(runjags)
+stroop_samples <- run.jags(
+  stroop_model_string, 
+  data = stroop_data, 
+  monitor = c("mu", "delta", "sigma"),
+  n.chains = 1,
+  burnin = 1000,
+  adapt = 1000,
+  sample = 5000,
+  silent.jags = TRUE
+  )
+```
+
+
+1. Create a trace plot by running the below code. Did the chain(s) for $\mu$, $\delta$, and $\sigma$ converged? How do you know?
+
+    ```{r eval = FALSE}
+    library(bayesplot)
+mcmc_trace(stroop_samples$mcmc)
+```
+    \vspace{0.5in}
+
+1. Create a plot of the autocorrelation function of the posterior draws using the below code. Do you have any concerns?
+
+    ```{r eval = FALSE}
+mcmc_acf(stroop_samples$mcmc)
+```
+    \vspace{0.5in}
+
+1. Plot the marginal posterior density for each parameter after discarding the burn-in period by running the following command.
+
+    ```{r eval = FALSE}
+mcmc_dens(stroop_samples$mcmc)
+```
+
+1. Calculate the posterior mean and SD for each parameter.
+
+    \vspace{1in}
+
+1. Calculate a 95% credible interval for $\delta$. What does this say about the difference in average completion time between groups?
+
+    \clearpage
 
 1. The full conditional posterior distributions can be shown to be:
 $$
 \begin{aligned}
-\mu | {\rm rest} &\sim \mathcal{N} \left(\dfrac{\tau \sum_{i=1}^{n} Y_i + \tau \sum_{j=n+1}^{n+m} (Y_j - \delta)}{\tau(n+m) + 1/100^2},\ \dfrac{1}{\tau(n+m) + 1/100^2} \right)\\
-\delta | {\rm rest} &\sim \mathcal{N} \left( \dfrac{\tau\sum_{i=n+1}^{n+m} (Y_i - \mu)}{\tau m + 1/100^2} ,\ \dfrac{1}{\tau m + 1/100^2} \right)\\
-\sigma^2 | {\rm rest} &\sim {\rm InvGamma} \left( 0.01 + \frac{n+m}{2}, \ 0.01 + \dfrac{\sum_{i=1}^{n} (Y_i - \mu)^2}{2} + \dfrac{\sum_{j=n+1}^{n+m} (Y_j - \mu-\delta)^2}{2} \right)
+\mu | {\rm rest} &\sim \mathcal{N} \left(\dfrac{\phi \sum_{i=1}^{n} Y_i + \phi \sum_{j=n+1}^{n+m} (Y_j - \delta)}{\phi(n+m) + 1/100^2},\ \dfrac{1}{\phi(n+m) + 1/100^2} \right)\\
+\delta | {\rm rest} &\sim \mathcal{N} \left( \dfrac{\phi\sum_{i=n+1}^{n+m} (Y_i - \mu)}{\phi m + 1/100^2} ,\ \dfrac{1}{\phi m + 1/100^2} \right)\\
+1/\sigma^2 | {\rm rest} &\sim {\rm Gamma} \left( 0.01 + \frac{n+m}{2}, \ 0.01 + \dfrac{\sum_{i=1}^{n} (Y_i - \mu)^2}{2} + \dfrac{\sum_{j=n+1}^{n+m} (Y_j - \mu-\delta)^2}{2} \right)
 \end{aligned}
 $$
-    where $\tau = 1/\sigma^2$. Write a Gibbs sampler to fit the model above.
+    where $\phi = 1/\sigma^2$. Outline the steps of a Gibbs sampler that can be used to draw samples from the joint posterior distribution.
     
-```{r include=FALSE}
-library(MCMCpack) # for rinvgamma()
 
-# Data 
-y <- stroop$Time
-y1 <- y[stroop$Type == "Standard"]
-y2 <- y[stroop$Type == "Color"]
-
-# Summary statistics
-n <- length(y1)
-m <- length(y2)
-
-# Initial parameter values
-mu     <- mean(y)
-delta  <- 0
-sigma2 <- var(y)
-
-
-# Sampling details and storage
-S                    <- 10000
-mcmc.draws           <- matrix(nrow = S, ncol = 3)
-colnames(mcmc.draws) <- c("mu", "delta", "sig2")
-
-# Running the Gibbs sampler
-for(i in 1:S) {
-  # Sample mu
-  mu.num  <- sum(y1) / sigma2 + sum(y2 - delta) / sigma2
-  mu.prec <- (n + m) / sigma2 + 1/100^2
-  mu      <- rnorm(1, mean = mu.num / mu.prec, sd = 1 / sqrt(mu.prec))
-  
-  # Sample delta
-  delta.num  <- sum(y2 - mu) / sigma2
-  delta.prec <- m / sigma2 + 1/100^2
-  delta      <- rnorm(1, mean = delta.num / delta.prec, sd = 1 / sqrt(delta.prec))
-  
-  # sample sigma2
-  A <- 0.01 + (n + m) / 2
-  B <- 0.01 + sum((y1 - mu)^2) / 2 + sum((y2 - mu - delta)^2) / 2
-  sigma2 <- rinvgamma(1, A, B)
-  
-  # store the draws
-  mcmc.draws[i,] <- c(mu, delta, sigma2)
-}
-```
-
-
-1. Examine the convergence of your chain for each parameter. Did the chain converge? About how long did it take?
-
-```{r include=FALSE}
-par(mfrow = c(3, 1))
-plot(1:S, mcmc.draws[,"mu"], type = "l", ylab = expression(mu), xlab = "Iteration")
-plot(1:S, mcmc.draws[,"delta"], type = "l", ylab = expression(delta), xlab = "Iteration")
-plot(1:S, mcmc.draws[,"sig2"], type = "l", ylab = expression(sigma^2), xlab = "Iteration")
-```
-
-
-1. Plot the marginal posterior density for each parameter after discarding the burn-in period.
-
-```{r include=FALSE}
-# The chains converged quickly, so let's only toss out 100
-mcmc.draws <- mcmc.draws[-c(1:100),]
-
-par(mfrow = c(1, 3))
-hist( mcmc.draws[,"mu"], freq = FALSE, xlab = expression(mu), main = NULL)
-hist( mcmc.draws[,"delta"], freq = FALSE, xlab = expression(delta), main = NULL)
-hist( mcmc.draws[,"sig2"], freq = FALSE, xlab = expression(sigma^2), main = NULL)
-```
-
-
-1. Use your results to determine whether a color distracter slowed student reaction time. 
-
-```{r include = FALSE}
-# CI approach
-mean(mcmc.draws[,"delta"])
-quantile(mcmc.draws[,"delta"], probs = c(0.05, 0.95))
-
-# Probability of Ha: delta > 0
-mean(mcmc.draws[,"delta"] > 0)
-```
-
-<!-- 1. (Extra practice.) Derive the full conditional posterior distribution for $\mu$, $\delta$, and $\sigma^2$. -->

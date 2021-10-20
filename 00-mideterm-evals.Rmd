@@ -1,0 +1,99 @@
+---
+title: "Midterm course evaluations"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+---
+
+## What should I start doing in the course
+
+.pull-left[
+- More code/clearer code
+
+- Post solutions to in-class practice problems 
+
+- Post homework solutions<br> .hidden[X]
+
+- Talk about difficult questions in HW and exams in class
+
+- Having a longer Thursday student hour on slack. If possible 7-9.
+]
+
+--
+
+.pull-right[
+- I'll try to add more comments
+
+- I can post in-class solutions<br> .hidden[X]
+
+- This would eliminate the possibility of revision
+
+- I'm happy to talk 1-1, but we want to preserve revision opportunities
+
+- I don't have room in my schedule
+]
+
+---
+
+## What should I stop doing in the course?
+
+.pull-left[
+- Make it so that the homework asks about earlier content. Don't include Wednesday's content on Friday's assignment.
+
+- Excessive derivations
+]
+
+
+--
+
+
+.pull-right[
+- I can do that, is that what we all want?<br> .hidden[X]<br> .hidden[X]
+
+- We need to be able to derive posteriors, so I can't promise that
+]
+
+
+---
+
+## What should I continue doing in the course?
+
+- Spec grading
+
+- Everything
+
+- Your turns and visual examples
+
+-  In-class handouts and collaborative notes 
+
+- Lectures
+
+- Keep the homework length as it is
+
+- Student hours
+
+- Explaining code
