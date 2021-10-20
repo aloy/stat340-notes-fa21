@@ -1,0 +1,462 @@
+---
+title: "More MCMC diagnostics"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+xaringanExtra::use_tachyons()
+
+three.cols <- colorblind_pal()(3)
+
+# ill-posed model
+bad_string <-"model{
+    Y    ~ dpois(exp(mu + theta))
+    mu ~ dnorm(1, 0.001)
+    theta ~ dnorm(1, 0.001)
+  }"
+
+inits.bad <- list(
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2019, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2020, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2021, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5))
+)
+
+bad_samples <- run.jags(
+  bad_string, 
+  data = list(Y=1),
+  monitor = "mu",
+  n.chains = 3,
+  adapt = 1000, 
+  burnin = 1000,
+  sample = 5000,
+  inits = inits.bad
+)
+
+
+# good model
+good_string <- "model{
+    Y1 ~ dpois(exp(mu))
+    Y2 ~ dpois(exp(theta))
+    mu ~ dnorm(1, 0.001)
+    theta ~ dnorm(1, 0.001)
+  }"
+
+inits.good <- list(
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2019, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2020, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2021, mu = rnorm(1, 0, 5), theta = rnorm(1, 0, 5))
+)
+good_samples <- run.jags(
+  good_string, 
+  data = list(Y1 = 1, Y2 = 10),
+  monitor = "mu",
+  n.chains = 3,
+  adapt = 1000, 
+  burnin = 1000,
+  sample = 5000,
+  inits = inits.good
+)
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+
+## Tuning MCMC
+
+.large[
+Three main decisions:
+
+- Selecting the initial values for the parameters
+
+- Determining if/when the chain(s) has converged
+
+- Selecting the number of samples needed to approximate the posterior
+]
+
+---
+
+## Initial values
+
+
+- The algorithm will eventually converge no matter what
+initial values you select
+
+- Choosing good starting values will speed up convergence
+
+- It is important to try a few initial values to verify they all give
+the same result
+
+- Usually 3-5 separate chains is sufficient
+
+.bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
+**Common strategies**:
+
+1. Select good initial values using method of
+moments or MLE
+
+2. Purposely pick bad but different initial values for
+each chain to check convergence
+]
+
+---
+
+## Convergence diagnostics
+
+
+
+.bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
+Don't assume that your Markov chain converged to the desired stationary distribution just because "it worked."
+]
+
+
+A **"good" Markov chain** should be:
+
+- **Stationary**: draws should within the posterior (stable path around the center of gravity)
+
+- **Well mixed**: 
+
+    + successive draws should not be highly correlated
+    
+    + each chain should target the same stationary distribution
+    
+---
+class: inverse
+
+# Your turn
+
+.large[.bold[With a neighbor, decide whether each chain is well mixed]]
+
+```{r echo=FALSE, fig.width = 10, fig.height = 3.5, out.width = "100%", fig.align='center'}
+p1 <- mcmc_trace(bad_samples$mcmc) + ylab(expression(mu))
+p2 <- mcmc_trace(good_samples$mcmc) + ylab(expression(mu))
+p1 + p2
+```
+
+
+---
+
+## Tools already in our toolkit
+
+Did my chains converge?
+
+- Trace plots
+
+<br>
+
+Are my chains well mixed?
+
+- ACF plots
+
+---
+
+## Convergence diagnostics
+.large[
+The **coda** R package has dozens of diagnostics
+
+```{r}
+library(coda)
+```
+
+
+Did my chains converge?
+
+- Geweke
+
+- Gelman-Rubin
+
+
+Did I run the sampler long enough after convergence?
+
+- Effective sample size
+
+- Standard errors for the posterior mean estimate
+]
+
+
+---
+
+## Geweke diagnostic
+
+
+- **Idea**: a two-sample test comparing the mean of a chain between batches at the beginning versus the end 
+
+- By default, JAGS compares the first 10% with the last 50%
+
+- Test statistic is a Z-score with the standard errors
+adjusted for autocorrelation (so we won't write down the formula)
+
+
+---
+
+## Geweke diagnostic
+
+.pull-left[
+
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "85%"}
+mcmc_trace(bad_samples$mcmc[[1]]) + 
+  annotate("rect", xmin = 0, xmax = .1 * 5000, ymin = min(bad_samples$mcmc[[1]]), ymax = max(bad_samples$mcmc[[1]]), alpha = 0.2) +
+  annotate("rect", xmin = 2500, xmax = 5000, ymin = min(bad_samples$mcmc[[1]]), ymax = max(bad_samples$mcmc[[1]]), alpha = 0.2) +
+  ggtitle("Chain 1")
+```
+]
+
+.pull-right[
+
+<br>
+
+```{r}
+geweke.diag(bad_samples$mcmc[[1]])
+```
+]
+
+---
+
+## Geweke diagnostic
+
+.pull-left[
+
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "85%"}
+mcmc_trace(good_samples$mcmc[[2]]) + 
+  annotate("rect", xmin = 0, xmax = .1 * 5000, ymin = min(good_samples$mcmc[[2]]), ymax = max(good_samples$mcmc[[2]]), alpha = 0.2) +
+  annotate("rect", xmin = 2500, xmax = 5000, ymin = min(good_samples$mcmc[[2]]), ymax = max(good_samples$mcmc[[2]]), alpha = 0.2) +
+  ggtitle("Chain 2")
+```
+
+]
+
+.pull-right[
+
+<br>
+
+```{r}
+geweke.diag(good_samples$mcmc[[2]])
+```
+
+
+]
+
+---
+
+## Gelman-Rubin diagnostic
+  
+.large[
+- Effective convergence of Markov chain simulation has
+been reached when inferences for quantities of interest do not depend
+on the starting point of the simulations.
+
+- If we run multiple chains, we hope that all chains give same result
+
+- Gelman and Rubin (1992) proposed (essentially) an ANOVA test of whether the chains have the same mean
+
+- $R_j$ is scaled and approaches 1 from above
+
+    + $R_j = 1 \Rightarrow$ perfect convergence
+
+    + $R_j \ge 1.1 \Rightarrow$ red flag
+]
+
+---
+
+## Gelman-Rubin diagnostic
+
+.pull-left[
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "85%"}
+mcmc_trace(bad_samples$mcmc)
+```
+]
+
+.pull-right[
+
+<br>
+```{r}
+gelman.diag(bad_samples$mcmc)
+```
+]
+
+---
+
+## Gelman-Rubin diagnostic
+
+.pull-left[
+
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "85%"}
+mcmc_trace(good_samples$mcmc)
+```
+]
+
+.pull-right[
+
+<br>
+```{r}
+gelman.diag(good_samples$mcmc)
+```
+
+]
+
+---
+
+## A note on autocorrelation
+
+
+- Lower values are better, but if the chains are long enough
+even large values can be OK
+
+- **Thinning** the Markov chain means keeping only every kth draw, where k is chosen so that the autocorrelation is small
+
+- `thin` argument to `run.jags()` implements this
+
+- This is always less efficient than using all samples, but can
+save memory
+
+
+---
+
+## Effective sample size
+
+
+- Highly correlated samples have less information than
+independent samples
+
+- $S=$ \# MCMC samples after burn in
+
+
+- **Effective samples size (ESS)**
+
+$$ESS_k = S \Big/ \left(1 + 2 \displaystyle \sum_{k=1}^\infty \rho(k)\right)$$
+
+- ESS = "equivalent number of independent observations"
+
+- Should be at least a few thousand for all parameters
+
+---
+
+## Effective sample size
+
+.pull-left[
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "90%"}
+mcmc_acf(bad_samples$mcmc[[1]])
+```
+]
+
+.pull-right[
+
+<br>
+```{r}
+# ESS for single chain of mu1
+# n.iter = 5000
+effectiveSize(bad_samples$mcmc[[1]])  
+```
+]
+
+---
+
+## Effective sample size
+
+.pull-left[
+
+
+```{r fig.height = 3.5, fig.width = 4, echo=FALSE, out.width = "90%"}
+mcmc_acf(good_samples$mcmc[[1]])
+```
+]
+
+.pull-right[
+
+<br>
+
+```{r}
+# ESS for single chain of mu1
+# n.iter = 5000
+effectiveSize(good_samples$mcmc[[1]])  
+```
+
+
+]
+
+---
+
+## Standard errors of posterior mean estimates
+
+.large[
+- Assuming independence the standard error is
+
+    $$\text{Naive SE} = \dfrac{s}{\sqrt{S}}$$
+
+    where $s =$ sample SD
+    
+- A more realistic standard error is
+
+$$\text{Time-series SE} = \dfrac{s}{\sqrt{ESS}}$$
+
+-  If the SE is too large, rerun the MCMC algorithm for a larger number of samples
+]
+
+---
+
+## Standard errors of posterior mean estimates
+
+```{r collapse=TRUE}
+summary(bad_samples)  
+```
+
+
+---
+
+## Standard errors of posterior mean estimates
+
+
+```{r collapse=TRUE}
+summary(good_samples)    
+```
+
+
+
+---
+
+## What to do if the chains haven't converged?
+
+.large[
+- Increase the number of iterations
+
+- Tune the Metropolis candidate distribution
+
+- Use better initial values
+
+- Use a more advanced algorithm
+
+- Simplify/reparameterize the model
+
+- Use (more) informative priors
+
+]
+
