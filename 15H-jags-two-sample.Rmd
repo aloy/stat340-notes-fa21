@@ -1,6 +1,9 @@
 ---
 geometry: margin=.8in 
-output: pdf_document
+output:
+  html_document:
+    code_download: true
+  pdf_document: default
 ---
 
 ## Running MCMC in JAGS via `runjags` -- Another example
