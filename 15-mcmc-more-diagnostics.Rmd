@@ -426,7 +426,7 @@ $$\text{Time-series SE} = \dfrac{s}{\sqrt{ESS}}$$
 ## Standard errors of posterior mean estimates
 
 ```{r collapse=TRUE}
-summary(bad_samples)  
+summary(bad_samples$mcmc)  
 ```
 
 
@@ -436,7 +436,7 @@ summary(bad_samples)
 
 
 ```{r collapse=TRUE}
-summary(good_samples)    
+summary(good_samples$mcmc)    
 ```
 
 

@@ -173,7 +173,7 @@ geweke.diag(bad_samples$mcmc[[1]])
 ## Fraction in 2nd window = 0.5 
 ## 
 ##    mu 
-## 4.426
+## 2.676
 ```
 ]
 
@@ -201,8 +201,8 @@ geweke.diag(good_samples$mcmc[[2]])
 ## Fraction in 1st window = 0.1
 ## Fraction in 2nd window = 0.5 
 ## 
-##      mu 
-## -0.3714
+##    mu 
+## 1.704
 ```
 
 
@@ -248,7 +248,7 @@ gelman.diag(bad_samples$mcmc)
 ## Potential scale reduction factors:
 ## 
 ##    Point est. Upper C.I.
-## mu       1.42       2.13
+## mu       1.06       1.17
 ```
 ]
 
@@ -333,7 +333,7 @@ effectiveSize(bad_samples$mcmc[[1]])
 
 ```
 ##       mu 
-## 6.356696
+## 6.062577
 ```
 ]
 
@@ -360,7 +360,7 @@ effectiveSize(good_samples$mcmc[[1]])
 
 ```
 ##       mu 
-## 2397.368
+## 2119.896
 ```
 
 
@@ -390,11 +390,23 @@ effectiveSize(good_samples$mcmc[[1]])
 
 
 ```r
-summary(bad_samples)  
-##      Lower95    Median  Upper95      Mean       SD     Mode    MCerr MC%ofSD
-## mu -49.00791 -5.890232 45.94824 -4.678077 23.94366 -4.67052 6.179753    25.8
-##    SSeff     AC.10     psrf
-## mu    15 0.9805497 1.156326
+summary(bad_samples$mcmc)  
+## 
+## Iterations = 2001:7000
+## Thinning interval = 1 
+## Number of chains = 3 
+## Sample size per chain = 5000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##           Mean             SD       Naive SE Time-series SE 
+##         15.455         17.026          0.139          3.341 
+## 
+## 2. Quantiles for each variable:
+## 
+##    2.5%     25%     50%     75%   97.5% 
+## -17.812   3.998  15.898  27.229  48.263
 ```
 
 
@@ -405,11 +417,23 @@ summary(bad_samples)
 
 
 ```r
-summary(good_samples)    
-##      Lower95     Median Upper95       Mean       SD       Mode      MCerr
-## mu -3.081467 -0.3794337 1.58441 -0.5733589 1.266578 -0.0903993 0.01566153
-##    MC%ofSD SSeff       AC.10     psrf
-## mu     1.2  6540 0.006247664 1.001324
+summary(good_samples$mcmc)    
+## 
+## Iterations = 2001:7000
+## Thinning interval = 1 
+## Number of chains = 3 
+## Sample size per chain = 5000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##           Mean             SD       Naive SE Time-series SE 
+##       -0.56146        1.26084        0.01029        0.01574 
+## 
+## 2. Quantiles for each variable:
+## 
+##    2.5%     25%     50%     75%   97.5% 
+## -3.6330 -1.2123 -0.3600  0.3301  1.2965
 ```
 
 
