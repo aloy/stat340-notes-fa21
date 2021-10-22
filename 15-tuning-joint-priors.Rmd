@@ -1,0 +1,217 @@
+---
+title: "Tuning joint priors"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+xaringanExtra::use_tachyons()
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+## Example: Comparing proportions
+
+- Yen et al. (2009) studied breast cancer survivors to consider possible risk factors for lymphedema (LE)
+
+- Condition caused by a blockage of lymph vessels that drain fluids from body tissues
+
+- $n=1211$ women were followed for 4 years
+
+- Tracked LE status and number of lymph nodes examined during surgery
+
+.bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
+**Research question:** <br>
+Does the probability of LE vary according to the  of nodes examined?
+]
+
+.footnote[Example adapted from *Bayesian Thinking in Biostatistics*]
+
+---
+
+## Observed data
+
+.Large[
+<table>
+  <tr>
+    <td>Nodes</td>
+    <td colspan="2">Lymphedema</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>examined</td>
+    <td>Yes</td>
+    <td>No</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>High (>5)</td>
+    <td>126</td>
+    <td>351</td>
+    <td>477</td>
+  </tr>
+  <tr>
+    <td>Low (≤5)</td>
+    <td>53</td>
+    <td>681</td>
+    <td>734</td>
+  </tr>
+</table>
+]
+
+- We're conditioning on the number of nodes
+
+- Assume the number of LE cases in the high and low categories are independent binomial random variables
+
+---
+
+## LE model
+
+$\theta_1=$ probability of LE for high node counts
+
+$\theta_2=$ probability of LE for low node counts
+
+.bold[Likelihood:] .hidden[xx] $Y_1 | \theta_1 \sim {\rm Binom}(n_1, \theta_1)$, .hidden[xx] $Y_2 | \theta_2 \sim {\rm Binom}(n_2, \theta_2)$
+
+.hidden[Priors: xxxxxx] $Y_1|\theta_1$, $Y_2|\theta_2$ independent
+
+<br>
+
+.bold[Priors:] .hidden[xxxxxx] $\theta_1 \sim {\rm Beta}(a_1, b_1)$, .hidden[xxxxxx] $\theta_2 \sim {\rm Beta}(a_2, b_2)$
+
+.hidden[Priors: xxxxxx] $\theta_1$, $\theta_2$ independent
+
+
+---
+
+## Tuning beta priors
+
+We're assuming $\theta_1$, $\theta_2$ are independent, so we can tune the two beta priors separately
+
+Prior information from literature:
+
+- Indicates reasonable ranges for LE probability after surgery
+
+- Risk is about 2% per year, continues for many years
+
+- For 4 year period
+
+    + set prior mode to 0.08
+    
+    + $P(\theta_i < 0.3) = 0.95$
+
+---
+
+## Other priors
+
+- In the absence of prior information, using independent reference priors is justified
+
+- If we prior studies had been conducted, then we could use data augmentation priors
+
+- We're not constrained to the beta family of priors, but it is convenient!
+
+---
+
+## Example: Comparing rates
+
+- Colditz et al. (1990) studied rates of breast cancer for 50-59-year-old postmenopausal women 
+
+- Two cohorts studied
+    + estrogen replacement therapy
+    + no estrogen replacement therapy
+    
+.bg-washed-blue.b--dark-blue.ba.bw2.br3.shadow-5.ph4.mt5[
+**Research question:** <br>
+Does estrogen replacement therapy impact the rate of breast cancer?
+]
+
+.footnote[Example adapted from *Bayesian Thinking in Biostatistics*]
+
+---
+
+## Observed data
+
+.Large[
+Group | Cancer cases | Person-years
+:------|-------:|-------------:
+Hormone therapy | 123 | 46,524
+None            | 288 | 145,159
+]
+
+*Person-years:* .hidden[xx]"The product of the number of years times the number of<br>
+.hidden[xxxxxxxxxxxxxxx]members of a population"
+
+We'll *assume* the number of cancer cases in the two cohorts are independent
+
+---
+
+## Cancer model
+
+$\theta_1=$ rate of occurrence of cancer per person-year in hormone therapy cohort
+
+$\theta_2=$ rate of occurrence of cancer per person-year in  no-therapy cohort
+
+.bold[Likelihood:] .hidden[xx] $Y_1 | \theta_1 \sim {\rm Poisson}(\theta_1 M_1)$, .hidden[xx] $Y_2 | \theta_2 \sim {\rm Poisson}(\theta_2 M_2)$
+
+.hidden[Priors: xxxxxx] $Y_1|\theta_1$, $Y_2|\theta_2$ independent
+
+<br>
+
+.bold[Priors:] .hidden[xxxxx] $\theta_1 \sim {\rm Gamma}(a_1, b_1)$, .hidden[xxxxxx] $\theta_2 \sim {\rm Gamma}(a_2, b_2)$
+
+.hidden[Priors: xxxxx] $\theta_1$, $\theta_2$ independent
+
+---
+
+## Tuning gamma priors
+
+1. Informative priors
+
+  Ask experts to think about $\theta_i$ independently, use this information to tune the prior parameters
+  
+2. Non-informative/vague priors
+
+  Use reference or diffuse priors
+  
+---
+
+
+## Reference priors
+
+- A reference prior for a rate parameter of a Poisson distribution is
+
+$$\pi(\theta) \propto 1/\sqrt{\theta}$$
+
+
+- Equivalent to Gamma(0.5, 0), which is .bold[improper]
+
+- You can approximate it with Gamma(0.5, 0.001) in JAGS
