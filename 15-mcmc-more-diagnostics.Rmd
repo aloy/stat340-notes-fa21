@@ -130,6 +130,85 @@ each chain to check convergence
 
 ---
 
+## Specifying initial values
+
+Specify the initial conditions for the MCMC chain using the `inits` argument
+
+--
+
+For a single chain, pass in a named list with your starting values
+
+```{r}
+# Pass this to inits argument
+init_list <- list(mu = 1, phi = 1/5)
+```
+
+
+--
+
+For multiple chains, pass in a list of named lists with different starting values
+
+```{r}
+# Pass this to inits argument
+init_list2 <- list(
+  list(mu = 1, phi = 1/5),
+  list(mu = -1, phi = 1/10)
+)
+```
+
+---
+
+## Specifying initial values
+
+You can also use random starting values if you don't have a good guess, or if you model is quite complicated
+
+```{r}
+inits_gen <- function(){
+  # function for initializing random mu, phi starting values
+  list(mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000))
+}
+```
+
+But remember, poor starting values can require longer burn-in periods
+
+
+---
+
+## A note on reproducibility
+
+Our usual approach to reproducile simulations is to run `set.seed(1234)` (with a better seed), but this won't work with JAGS
+
+Instead, specify the `.RNG.seed` and `.RNG.name` in the `inits` argument
+
+
+```{r}
+repro_inits <- list(
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2019, #<<
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2020, #<<
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000)),
+  list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2021, #<<
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000))
+)
+```
+
+---
+
+## A note on reproducibility
+
+There are four psuedorandom number generators in base JAGS:
+
+- `"base::Wichmann-Hill"`
+- `"base::Marsaglia-Multicarry"`
+- `"base::Super-Duper"`
+- `"base::Mersenne-Twister"`
+
+R uses these as well, so you can read more at `?Random`
+
+FWIW, `"base::Mersenne-Twister"` if the default in R
+
+---
+
 ## Convergence diagnostics
 
 

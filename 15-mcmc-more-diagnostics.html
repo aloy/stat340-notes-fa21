@@ -66,6 +66,89 @@ each chain to check convergence
 
 ---
 
+## Specifying initial values
+
+Specify the initial conditions for the MCMC chain using the `inits` argument
+
+--
+
+For a single chain, pass in a named list with your starting values
+
+
+```r
+# Pass this to inits argument
+init_list &lt;- list(mu = 1, phi = 1/5)
+```
+
+
+--
+
+For multiple chains, pass in a list of named lists with different starting values
+
+
+```r
+# Pass this to inits argument
+init_list2 &lt;- list(
+  list(mu = 1, phi = 1/5),
+  list(mu = -1, phi = 1/10)
+)
+```
+
+---
+
+## Specifying initial values
+
+You can also use random starting values if you don't have a good guess, or if you model is quite complicated
+
+
+```r
+inits_gen &lt;- function(){
+  # function for initializing random mu, phi starting values
+  list(mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000))
+}
+```
+
+But remember, poor starting values can require longer burn-in periods
+
+
+---
+
+## A note on reproducibility
+
+Our usual approach to reproducile simulations is to run `set.seed(1234)` (with a better seed), but this won't work with JAGS
+
+Instead, specify the `.RNG.seed` and `.RNG.name` in the `inits` argument
+
+
+
+```r
+repro_inits &lt;- list(
+* list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2019,
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000)),
+* list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2020,
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000)),
+* list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 2021,
+       mu = rnorm(1, 0, 100), phi = 1 / runif(1, 0.001, 1000))
+)
+```
+
+---
+
+## A note on reproducibility
+
+There are four psuedorandom number generators in base JAGS:
+
+- `"base::Wichmann-Hill"`
+- `"base::Marsaglia-Multicarry"`
+- `"base::Super-Duper"`
+- `"base::Mersenne-Twister"`
+
+R uses these as well, so you can read more at `?Random`
+
+FWIW, `"base::Mersenne-Twister"` if the default in R
+
+---
+
 ## Convergence diagnostics
 
 
@@ -92,7 +175,7 @@ class: inverse
 
 .large[.bold[With a neighbor, decide whether each chain is well mixed]]
 
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-1-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-5-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -155,7 +238,7 @@ adjusted for autocorrelation (so we won't write down the formula)
 
 .pull-left[
 
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-3-1.svg" width="85%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-7-1.svg" width="85%" /&gt;
 ]
 
 .pull-right[
@@ -172,8 +255,8 @@ geweke.diag(bad_samples$mcmc[[1]])
 ## Fraction in 1st window = 0.1
 ## Fraction in 2nd window = 0.5 
 ## 
-##    mu 
-## 2.676
+##     mu 
+## -3.646
 ```
 ]
 
@@ -183,7 +266,7 @@ geweke.diag(bad_samples$mcmc[[1]])
 
 .pull-left[
 
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-5-1.svg" width="85%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-9-1.svg" width="85%" /&gt;
 
 ]
 
@@ -201,8 +284,8 @@ geweke.diag(good_samples$mcmc[[2]])
 ## Fraction in 1st window = 0.1
 ## Fraction in 2nd window = 0.5 
 ## 
-##    mu 
-## 1.704
+##      mu 
+## -0.2094
 ```
 
 
@@ -233,7 +316,7 @@ on the starting point of the simulations.
 ## Gelman-Rubin diagnostic
 
 .pull-left[
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-7-1.svg" width="85%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-11-1.svg" width="85%" /&gt;
 ]
 
 .pull-right[
@@ -248,7 +331,7 @@ gelman.diag(bad_samples$mcmc)
 ## Potential scale reduction factors:
 ## 
 ##    Point est. Upper C.I.
-## mu       1.06       1.17
+## mu       1.41       2.38
 ```
 ]
 
@@ -258,7 +341,7 @@ gelman.diag(bad_samples$mcmc)
 
 .pull-left[
 
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-9-1.svg" width="85%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-13-1.svg" width="85%" /&gt;
 ]
 
 .pull-right[
@@ -318,7 +401,7 @@ independent samples
 ## Effective sample size
 
 .pull-left[
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-11-1.svg" width="90%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-15-1.svg" width="90%" /&gt;
 ]
 
 .pull-right[
@@ -333,7 +416,7 @@ effectiveSize(bad_samples$mcmc[[1]])
 
 ```
 ##       mu 
-## 6.062577
+## 7.016737
 ```
 ]
 
@@ -344,7 +427,7 @@ effectiveSize(bad_samples$mcmc[[1]])
 .pull-left[
 
 
-&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-13-1.svg" width="90%" /&gt;
+&lt;img src="15-mcmc-more-diagnostics_files/figure-html/unnamed-chunk-17-1.svg" width="90%" /&gt;
 ]
 
 .pull-right[
@@ -360,7 +443,7 @@ effectiveSize(good_samples$mcmc[[1]])
 
 ```
 ##       mu 
-## 2119.896
+## 1947.605
 ```
 
 
@@ -401,12 +484,12 @@ summary(bad_samples$mcmc)
 ##    plus standard error of the mean:
 ## 
 ##           Mean             SD       Naive SE Time-series SE 
-##         15.455         17.026          0.139          3.341 
+##         1.7099        23.1165         0.1887         5.4610 
 ## 
 ## 2. Quantiles for each variable:
 ## 
 ##    2.5%     25%     50%     75%   97.5% 
-## -17.812   3.998  15.898  27.229  48.263
+## -39.955 -16.786   3.175  19.307  43.773
 ```
 
 
@@ -428,12 +511,12 @@ summary(good_samples$mcmc)
 ##    plus standard error of the mean:
 ## 
 ##           Mean             SD       Naive SE Time-series SE 
-##       -0.56146        1.26084        0.01029        0.01574 
+##       -0.56735        1.26785        0.01035        0.01592 
 ## 
 ## 2. Quantiles for each variable:
 ## 
 ##    2.5%     25%     50%     75%   97.5% 
-## -3.6330 -1.2123 -0.3600  0.3301  1.2965
+## -3.6671 -1.2308 -0.3638  0.3374  1.3089
 ```
 
 
