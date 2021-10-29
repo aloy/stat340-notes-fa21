@@ -1,0 +1,524 @@
+---
+title: "Hierarchical models"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(bayesrules)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+library(tidyverse)
+library(ggridges)
+xaringanExtra::use_tachyons()
+
+## School example from Hoff.
+load("data/nels.Rdata")
+y1 <- y.school1
+y2 <- y.school2
+n1 <- length(y1)
+n2 <- length(y2)
+
+school <- Y.school.mathscore %>% 
+  as.data.frame %>% 
+  tbl_df
+
+## Draw a smaller sample for the first example
+set.seed(9999)
+sub_school <- school %>% 
+  nest(data = mathscore) %>%
+  slice_sample(n = 3) %>%
+  unnest(cols = data)
+
+sub_school <- sub_school %>%
+  bind_rows(school %>% filter(school %in% c(67, 11))) %>%
+  mutate(school = as.factor(school),
+         school = fct_reorder(factor(school), .x = mathscore)
+  ) %>%
+  mutate(school = factor(as.numeric(school)))
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+## Example: ELS math scores
+
+- 2002 Educational Longitudinal Study (ELS)
+
+- Survey from schools across the United States
+
+- Data are collected by sampling schools and then sampling students within each selected school
+
+- We'll focus on 10th grade math scores from a sample of 10 schools
+
+- Math tests contained items in arithmetic, algebra, geometry, data/probability, and advanced topics were divided into process categories of skill/knowledge, understanding/ comprehension, and problem solving
+
+---
+
+## ELS math scores
+
+.left-wide[
+```{r echo=FALSE, fig.height = 3, fig.width = 5, out.width="98%"}
+ggplot(sub_school, aes(x = mathscore, y = school)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(shape = 1, height = 0.1, width = 0) +
+  theme_light() +
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank())
+```
+]
+
+.right-narrow[
+Possible questions:
+
+- What’s the typical math score?
+
+- To what extent do scores vary from school to school?
+
+- For any single school, how much might scores vary from student to student?
+]
+
+---
+
+## Possible analysis strategies
+
+.bold[Complete pooling (combined estimates)]<br>
+Ignore schools and lump all students together
+
+--
+
+.bold[No pooling (separate groups)]<br>
+Separately analyze each school and assume that one school’s data doesn’t contain valuable information about another school
+
+--
+
+.bold[Partial pooling (compromise estimates)]<br>
+Acknowledge the grouping structure, so that even though schools differ in performance, they might share valuable information about each other and about the broader population of schools
+
+---
+class: inverse
+
+## .bold[Your turn: Complete pooling]
+
+.bold[
+Suppose we decide to pool all of the scores together, disregarding what school each comes from.
+
+Let $Y_i$ denote the exam score for student $i$.
+
+Write down a model (likelihood and priors) that could be used for the exams scores in this setting.
+
+Just list distributions, don't do any algebra.
+]
+
+---
+
+## Pooling the scores together
+
+.pull-left[
+```{r echo=FALSE, fig.height = 2.5, fig.width=3.5, out.width = "100%"}
+ggplot(sub_school, aes(x = mathscore)) +
+  geom_density() +
+  theme_light() +
+  labs(x = "math score")
+```
+]
+
+.pull-right[
+- Density plot of the math scores shows the variability from score to score
+
+- Range from 26 to 76
+
+- Median: ~49
+]
+
+---
+
+## Prior knowledge
+
+- Exam is standardized to have a mean of 50 and a standard deviation of 10
+
+- Mean is most likely between 40 and 60 (let's call that a 95% interval)
+
+--
+
+```{r echo=FALSE, fig.height = 2.5, fig.width = 6, out.width = "85%", fig.align='center'}
+pool_mu <- plot_normal(50, 5) + 
+  theme_light() + 
+  ggtitle(expression(paste(mu, " ~ N(50, 5)")))
+pool_phi <- plot_gamma(1, 100) + 
+  theme_light() + 
+  labs(x = expression(phi), y = expression(f(phi))) +
+  ggtitle(expression(paste(mu, " ~ Gamma(1, 100)")))
+pool_mu + pool_phi
+```
+
+
+---
+
+## Write the model for JAGS
+
+```{r results='hide', warning=FALSE, message=FALSE}
+complete_pooling <-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dnorm(mu, phi)
+}
+
+## priors
+mu ~ dnorm(50, 1/25)  # remember to use precision here
+phi ~ dgamma(1, 1/100)
+sigma <- sqrt(pow(phi, -1))
+}
+"
+```
+
+---
+
+## Run MCMC
+
+```{r results='hide', warning=FALSE, message=FALSE}
+pooled_model <- run.jags(
+  complete_pooling, 
+  data = list(y = sub_school$mathscore, N = length(sub_school$mathscore)),
+  inits = list(list(mu = rnorm(1, 50, sd = 5), phi = runif(1, .1, .3)),
+               list(mu = rnorm(1, 50, sd = 5), phi = runif(1, .1, .3)),
+               list(mu = rnorm(1, 50, sd = 5), phi = runif(1, .1, .3))),
+  monitor = c("mu", "sigma"), 
+  n.chains = 3, 
+  sample = 5000, 
+  silent.jags = TRUE
+)
+```
+
+Remember to check for convergence before moving on to inference
+
+---
+
+```{r fig.height=3, fig.width = 7, out.width = "100%"}
+mcmc_trace(pooled_model$mcmc)
+```
+
+---
+
+```{r fig.height=3, fig.width = 7, out.width = "100%"}
+mcmc_dens_overlay(pooled_model$mcmc)
+```
+
+---
+
+```{r fig.height=7, fig.width = 7, out.width = "50%"}
+mcmc_acf(pooled_model$mcmc)
+```
+
+
+---
+
+## MCMC summary
+
+.code100[
+```{r}
+print(pooled_model, digits = 3)
+```
+]
+
+Typical score is around `r round(summary(pooled_model)["mu", "Mean"], 1)`
+
+Standard deviation from student to student is about `r round(summary(pooled_model)["sigma", "Mean"], 2)`
+
+---
+
+## Pooled predictions vs. sample means
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, fig.align='center', out.width = "90%"}
+set.seed(1234786)
+n_yrep <- 5
+nsim <- 5000
+pooled_pp <- matrix(nrow = nsim, ncol = n_yrep)
+for(i in 1:nsim) {
+  draw <- pooled_model$mcmc[[1]][i,]
+  pooled_pp[i,] <- rnorm(n_yrep, draw[1], draw[2])
+}
+
+y_obs <- sub_school %>%
+  group_by(school) %>%
+  summarize(mean = mean(mathscore))
+ppc_intervals(y_obs$mean, yrep = pooled_pp,
+              prob_outer = 0.80)
+```
+
+
+
+
+---
+
+class: inverse
+
+## .bold[Your turn: No pooling]
+
+.bold[
+Suppose we decide to model each school's scores separately. In this case, we would need 10 models, one for each school.
+
+Let $Y_{ij}$ denote the exam score for student $i$ in school $j$. (Book's notation)
+
+Write down a model (likelihood and priors) that could be used for the exams scores in school $j$.
+]
+
+---
+
+## Separating the scores
+
+.pull-left[
+```{r echo=FALSE, fig.height = 3.25, fig.width=3.5, out.width = "100%", message=FALSE}
+ggplot(sub_school, aes(x = mathscore, y = school)) +
+  geom_density_ridges(alpha = 0.8) +
+  theme_light() +
+  labs(x = "math score") +
+  scale_color_colorblind() +
+  scale_fill_colorblind()
+```
+]
+
+.pull-right[
+- Typical values appear to vary by school
+
+- Variability is similar between schools (remember, sample sizes aren't big, range from 4 to 22)
+
+- Seems like we can simply from $\sigma_j$ to $\sigma$ in our model
+]
+
+---
+
+## Write the model for JAGS
+
+```{r include=FALSE}
+inits <- function (){
+  list(mu = rnorm(1), phi = runif(1))
+}
+```
+
+
+```{r}
+no_pooling <- "
+  model {
+  ## Sampling
+    for (i in 1:N){
+      y[i] ~ dnorm(mu[school[i]], phi)
+    }
+    
+    ## Priors
+    for (j in 1:J){
+      mu[j]  ~ dnorm(50, 1/100)
+    } 
+    
+    phi ~ dgamma(1, 1/100)
+    sigma <- 1 / sqrt(phi)
+  }
+"
+```
+
+---
+
+## Run MCMC
+
+```{r results='hide', warning=FALSE, message=FALSE}
+no_pooled_model <- run.jags(
+  no_pooling, 
+  data = list(y = sub_school$mathscore, school = sub_school$school, 
+              N = nrow(sub_school), J = n_distinct(sub_school$school)),
+  monitor = c("mu", "sigma"), 
+  n.chains = 3, 
+  sample = 5000, 
+  silent.jags = TRUE
+)
+```
+
+---
+
+```{r fig.height = 9, fig.width = 15, out.width = "85%"}
+mcmc_trace(no_pooled_model$mcmc,  regex_pars = "mu")
+```
+
+---
+
+## MCMC summary
+
+.code90[
+```{r}
+print(no_pooled_model, digits = 3)
+```
+]
+
+---
+
+```{r fig.height = 7, fig.width = 12, out.width = "85%"}
+mcmc_areas_ridges(no_pooled_model$mcmc, regex_pars = "mu")
+```
+
+---
+
+```{r fig.height = 7, fig.width = 12, out.width = "85%"}
+mcmc_intervals(no_pooled_model$mcmc, regex_pars = "mu")
+```
+
+---
+
+## No pooled predictions vs. sample means
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, fig.align='center', out.width = "90%"}
+
+n_yrep <- 5
+nsim <- 5000
+no_pooled_pp <- matrix(nrow = nsim, ncol = n_yrep)
+for(i in 1:nsim) {
+  draw <- no_pooled_model$mcmc[[1]][i,]
+  no_pooled_pp[i,] <- rnorm(n_yrep, draw[1:5], draw[6])
+}
+
+ppc_intervals(y_obs$mean, yrep = no_pooled_pp,
+              prob_outer = 0.80)
+
+```
+
+---
+
+## What have we seen so far?
+
+- Completely pooled model does not acknowledge differences between schools
+
+- No pooled model acknowledges that some schools tend to score higher than others
+
+- No pooled model ignores data on one school when learning about the typical score of another
+
+- No pooled model cannot be generalized to schools outside our sample
+
+---
+
+## Hierarchical model
+
+Let's compromise between the the complete pooled and no pooled models 
+
+How? By using a *two-stage prior* specification
+
+---
+
+#### Hierarchical model specification for JAGS
+
+.code100[
+```{r}
+modelString <-"
+model {
+
+## sampling
+for (i in 1:N){
+   y[i] ~ dnorm(mu_j[school[i]], invsigma2)
+}
+
+## priors
+for (j in 1:J){
+   mu_j[j] ~ dnorm(mu, invtau2)
+}
+
+invsigma2 ~ dgamma(a_s, b_s)
+sigma <- sqrt(pow(invsigma2, -1))
+
+## hyperpriors
+mu ~ dnorm(mu0, g0)
+invtau2 ~ dgamma(a_t, b_t)
+tau <- sqrt(pow(invtau2, -1))
+}
+"
+```
+]
+
+---
+
+#### Define the data and prior parameters
+
+
+```{r}
+y <- sub_school$mathscore      
+school <- sub_school$school
+N <- length(y)  
+J <- length(unique(school)) 
+the_data <- list(y = y, school = school, 
+                 N = N, J = J,
+                 mu0 = 50, g0 = .04,  # prior parameters
+                 a_t = 1, b_t = .01,  # hyperparameters
+                 a_s = 1, b_s = .01)  # hyperparameters
+```
+
+---
+
+#### Run MCMC
+
+```{r results='hide', message=FALSE, warning=FALSE}
+posterior <- run.jags(
+  modelString,
+  n.chains = 1,
+  data = the_data,
+  monitor = c("mu", "tau", "mu_j", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  silent.jags = TRUE
+)
+```
+
+---
+
+.code100[
+```{r}
+print(posterior, digits = 3)  
+```
+]
+
+---
+
+```{r fig.height = 7, fig.width = 12, out.width = "85%"}
+mcmc_intervals(posterior$mcmc, regex_pars = "mu")
+```
+
+---
+
+## Hierarchical predictions vs. sample means
+
+```{r echo=FALSE, fig.height = 3, fig.width = 6, fig.align='center', out.width = "90%"}
+
+n_yrep <- 5
+nsim <- 5000
+hierarchical_pp <- matrix(nrow = nsim, ncol = n_yrep)
+for(i in 1:nsim) {
+  draw <- posterior$mcmc[[1]][i,]
+  hierarchical_pp[i,] <- rnorm(n_yrep, draw[3:7], draw[8])
+}
+
+ppc_intervals(y_obs$mean, yrep = hierarchical_pp,
+              prob_outer = 0.80)
+
+```
