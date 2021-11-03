@@ -484,3 +484,39 @@ pp <- data.frame(
 mcmc_areas(pp)
 ```
 
+---
+
+## Prior distributions for between group variance
+
+For $J > 5$, common choices include 
+
+- improper uniform (either on the variance or log variance scale), but not allowed in JAGS 
+
+- proper uniform (with large upper bound) - `dunif`
+
+- proper normal (with large variance $\rightarrow$ small precision) - `dnorm`
+
+.footnote[Gelman (2006). Prior distributions for variance parameters in hierarchical models." *Bayesian Analysis*. 1 (3) 515 - 534.]
+
+---
+
+## Prior distributions for between group variance
+
+For $J < 5$, or in a situation where more prior information is helpful, 
+
+- Use half-*t* distribution
+
+- Half-Cauchy with reasonably large scale parameter - `dhalfcauchy(sigma)`
+
+
+.footnote[Gelman (2006). Prior distributions for variance parameters in hierarchical models." *Bayesian Analysis*. 1 (3) 515 - 534.]
+
+---
+
+## Prior distributions for between group variance
+
+- In general, Gelman (2006) does not recommend the ${\rm Gamma}(\epsilon, \epsilon)$ family of noninformative prior distributions because the inferences are often sensitive to the choice of $\epsilon$.
+
+- Different than advice in the textbook
+
+.footnote[Gelman (2006). Prior distributions for variance parameters in hierarchical models." *Bayesian Analysis*. 1 (3) 515 - 534.]

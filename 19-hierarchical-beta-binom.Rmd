@@ -1,0 +1,387 @@
+---
+title: "Hierarchical beta-binomial model"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(bayesrules)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+library(tidyverse)
+library(ggridges)
+library(countdown)
+xaringanExtra::use_tachyons()
+
+## Rat tumor data
+y <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,
+        2,1,5,2,5,3,2,7,7,3,3,2,9,10,4,4,4,4,4,4,4,10,4,4,4,5,11,12,
+        5,5,6,5,6,6,6,6,16,15,15,9,4)
+n <- c(20,20,20,20,20,20,20,19,19,19,19,18,18,17,20,20,20,20,19,19,18,18,25,24,
+       23,20,20,20,20,20,20,10,49,19,46,27,17,49,47,20,20,13,48,50,20,20,20,20,
+       20,20,20,48,19,19,19,22,46,49,20,20,23,19,22,20,20,20,52,46,47,24,14)
+
+tumor <- data.frame(y=y, n=n)
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+## Motivating experiment
+
+- Imagine a single toxicity experiment performed on rats. Lots of those are carried out before drugs are approved for use in humans.
+
+- $\theta$ is the probability that a rat receiving no treatment in an experiment develops a tumor.
+
+- Current experiment: $n = 14$ rats in the study, and $y = 4$ rats develop a tumor.
+
+- Previous experiments: the same experiment has been performed with 70 other groups of rats
+    
+    + $y_j =$ # rats with tumors in jth experiment
+    + $n_j=$ sample size in jth experiment
+    + $\theta_j=$ probability that a rat receiving no treatment in an experiment develops a tumor in jth experiment
+
+---
+background-image: url(img/bda_rat_data.png)
+background-size: 50%
+background-position: left
+
+## Structure of hierarchical model
+
+.pull-right[
+.bold[Assumption:]
+
+current tumor risk, $\theta_{71}$, and the 70 historical risks, $\theta_1, \ldots, \theta_{70}$, are a random sample from a common distribution
+]
+
+.footnote[Fig. 5.1 in Gelman et al. (2004)]
+
+---
+
+## Posterior derivations
+
+Before moving on to hyper-prior selection and tuning, let's explore how to derive out posterior distributions
+
+---
+
+## Hyper priors (second stage)
+
+- In hierarchical models, the choice of the hyper-prior is important because it is possible to end up with an improper posterior distribution.
+
+- For example, in this beta-binomial example a uniform prior on $\alpha,\ \beta$ does not work because the posterior distribution of $\alpha,\ \beta$ is non-integrable.
+
+- An approach that often makes the choice of hyper prior easier is to .bold[think of functions of the parameters that are more intuitive.]
+
+---
+
+## Beta-binomial hyperprior
+
+What are functions of $\alpha$ and $\beta$ that are more intuitive?
+
+--
+
+.bold[Prior mean]: .hidden[XXXX] $\quad \mu = \dfrac{\alpha}{\alpha + \beta}$
+ 
+--
+
+.bold[Prior sample size:] $\quad \eta = \alpha + \beta$
+
+--
+
+.bold[Approx. prior SD:]  $\quad \eta^* = (\alpha+\beta)^{-1/2}$
+
+---
+
+## Noninformative hyperprior - option 1
+
+One way to develop a noninformative prior would be to place uniform densities on $(\mu, \eta)$
+
+
+\begin{align*}
+\mu =  \dfrac{\alpha}{\alpha + \beta} &\sim {\rm Beta}(1, 1)\\
+\eta = \alpha + \beta &\sim 1
+\end{align*}
+
+
+What does this imply about the prior of $\alpha$, $\beta$ on the original scale?
+
+We need to find the Jacobian of the inverse transformation to answer this.
+
+
+---
+
+## Noninformative hyperprior - option 2
+
+An alternative approach is to  place uniform densities on prior the mean and approximate SD
+
+\begin{align*}
+\mu &=  \dfrac{\alpha}{\alpha + \beta} \sim {\rm Beta}(1, 1)\\
+\eta^* &= (\alpha + \beta)^{-1/2} \sim 1
+\end{align*}
+
+The implied prior for $(\alpha, \beta)$ is given by
+
+$$\pi(\alpha, \beta) \propto (\alpha + \beta)^{-5/2}$$
+which is a proper prior distribution (should be more efficient)
+
+---
+
+## Noninformative priors in JAGS
+
+```{r}
+noninform_model<-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dbin(theta[i], n[i])
+}
+
+## priors
+for (i in 1:N){
+   theta[i] ~ dbeta(alpha, beta)
+}
+
+## noninformative hyperpriors
+alpha <- mu / pow(eta, 2)
+beta  <- (1 - mu) / pow(eta, 2)
+mu ~ dbeta(1, 1)
+eta ~ dbeta(1, 1)
+}"
+```
+
+---
+
+## Comparing posterior parameterizations
+
+```{r include=FALSE}
+N <- length(y) 
+rat_tumor_data <- list("y" = y, "n" = n, "N" = N)
+posterior <- run.jags(noninform_model,
+                      n.chains = 1,
+                      data = rat_tumor_data,
+                      monitor = c("theta", "alpha", "beta", "mu", "eta"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      silent.jags = TRUE)
+```
+
+```{r echo=FALSE, fig.height = 3.5, fig.width = 7, out.width = "90%"}
+draws1 <- as.data.frame(posterior$mcmc[[1]])
+
+p1 <- ggplot(data = draws1, aes(x = mu, y = eta)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "dodgerblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(mu),
+       y = expression(eta))
+
+p2 <- ggplot(data = draws1, aes(x = alpha, y = beta)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "dodgerblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(alpha),
+       y = expression(beta))
+
+p1 + p2
+```
+
+---
+
+## Estimated vs observed tumor rates
+
+.pull-left[
+```{r echo=FALSE, fig.height = 5, fig.width = 5}
+theta_df <- mcmc_intervals_data(posterior$mcmc, regex_pars = "theta", prob = 0.9)
+
+theta_df <- mutate(theta_df, observed = y/n)
+
+ggplot(theta_df, aes(x = jitter(observed))) +
+  geom_abline(intercept = 0, slope = 1, color = "gray70") +
+  geom_linerange(aes(ymin = ll, ymax = hh)) +
+  geom_point(aes(y = m)) +
+  labs(
+    x = "observed rate, y(i) / N(i)",
+    y = "90% posterior interval for theta(i)"
+  ) +
+  theme_classic() +
+  coord_equal()
+```
+]
+
+.pull-right[
+- The rates $\theta_j$ are .bold[shrunk] toward their sample point estimates (diagonal)
+
+- Smaller experiments are shrunk more and have higher posterior variances
+]
+
+<!-- --- -->
+
+<!-- ## Shrinkage -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- theta_df %>% -->
+<!--   select(Sample = observed, Posterior = m) %>% -->
+<!--   pivot_longer(cols = everything(), names_to = "type", values_to = "estimates") %>% -->
+<!--   mutate(group = row_number()) %>% -->
+<!--   ggplot(aes(x = rev(factor(type)), y = estimates, group= group)) + -->
+<!--   geom_point() + -->
+<!--   geom_path() -->
+<!-- ``` -->
+
+---
+
+<!-- --- -->
+
+<!-- ## Aside - which uninformative prior? -->
+
+<!-- Target: $\pi(\alpha, \beta) \rightarrow \pi(\mu, \eta)$, so we need to apply a bivariate transformation -->
+
+<!-- $\mu =  \dfrac{\alpha}{\alpha + \beta} \qquad \eta = \alpha + \beta$ -->
+
+<!-- $\pi(\mu, \eta) = \pi(\alpha, \beta)\cdot | \left| \dfrac{\partial(\alpha, \beta)}{\partial(\mu, \eta)} \right| |$ -->
+
+
+
+---
+
+## What if we don't want to be "fully noninformative"
+
+.pull-left[
+Hyperprior for $\mu$ 
+
+- $\mu =  \dfrac{\alpha}{\alpha + \beta} \in (0, 1)$
+
+- $\mu \sim {\rm Beta}(a_0, b_0)$ is reasonable
+
+- Beta(1, 1) would represent little prior knowledge
+]
+
+.pull-right[
+
+Hyperprior for $\eta$
+
+- $\eta > 0$ .hidden[$\dfrac{\alpha}{\alpha + \beta}$]
+
+- Many options for distributions, which makes sense?
+
+]
+
+---
+
+## Albert and Hu's approach
+
+- Choose $\mu \sim {\rm Beta}(a_0, b_0)$
+
+- Reframe $\eta$ in terms of a shrinkage factor, $\lambda$, and place a prior on $\lambda$
+
+    + $\theta_j | \alpha, \beta, y \sim {\rm Beta}(\alpha + y_j, \beta + n_j - y_j)$
+    
+    + $E(\theta_j | \alpha, \beta, y ) = \dfrac{\alpha + y_j}{n_j + \alpha + \beta}$, now re-express in terms of $\mu$ and $\eta$
+
+---
+
+## Albert and Hu's approach
+
+- Once you tune your prior on $\lambda$, this induces a prior on $\eta$
+
+    $\lambda \sim {\rm Unif}(0,1) \qquad \Longrightarrow \qquad \pi(\eta) = \dfrac{n_j}{(n_j + \eta)^2}, \eta>0$ 
+
+--
+
+- JAGS doesn't "know" this distribution, but it knows the .bold[logistic distribution]
+
+- Let $\nu = \log(\eta)$, this transformation gives a ${\rm Logistic}(n_j, 1)$ PDF
+
+$$\pi(\nu) = \dfrac{e^{-(\nu-\log n_j)}}{\left[1 + e^{-(\nu-\log n_j) }\right]^2}, \nu \in \mathbb{R}$$
+- `dlogis` in JAGS
+.footnote[You can derive using the univariate transformation you learned in probability]
+
+---
+
+## JAGS model specification
+
+```{r}
+weak_inform_model<-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dbin(theta[i], n[i])
+}
+
+## priors
+for (i in 1:N){
+   theta[i] ~ dbeta(alpha, beta)
+}
+
+## noninformative hyperpriors
+alpha <- mu * eta
+beta  <- (1 - mu) * eta
+mu ~ dbeta(1, 1)
+eta <- exp(logeta)
+logeta ~ dlogis(logn, 1)
+}"
+```
+
+---
+
+## Comparing posterior parameterizations
+
+```{r include=FALSE}
+N <- length(y) 
+rat_tumor_data <- list("y" = y, "n" = n, "N" = N, logn = log(N))
+posterior2 <- run.jags(noninform_model,
+                      n.chains = 1,
+                      data = rat_tumor_data,
+                      monitor = c("theta", "alpha", "beta", "mu", "eta"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      silent.jags = TRUE)
+```
+
+```{r echo=FALSE, fig.height = 3.5, fig.width = 7, out.width = "90%"}
+draws2 <- as.data.frame(posterior2$mcmc[[1]])
+
+p3 <- ggplot(data = draws1, aes(x = mu, y = eta)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "dodgerblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(mu),
+       y = expression(eta))
+
+p4 <- ggplot(data = draws1, aes(x = alpha, y = beta)) +
+  geom_point(alpha = 0.2) +
+  geom_density2d(color = "dodgerblue", size = 0.8) +
+  theme_classic() +
+  labs(x = expression(alpha),
+       y = expression(beta))
+
+p3 + p4
+```

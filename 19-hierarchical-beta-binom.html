@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Hierarchical beta-binomial model</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+
+# Hierarchical beta-binomial model
+
+### Stat 340: Bayesian Statistics
+
+
+---
+
+## Motivating experiment
+
+- Imagine a single toxicity experiment performed on rats. Lots of those are carried out before drugs are approved for use in humans.
+
+- `\(\theta\)` is the probability that a rat receiving no treatment in an experiment develops a tumor.
+
+- Current experiment: `\(n = 14\)` rats in the study, and `\(y = 4\)` rats develop a tumor.
+
+- Previous experiments: the same experiment has been performed with 70 other groups of rats
+    
+    + `\(y_j =\)` # rats with tumors in jth experiment
+    + `\(n_j=\)` sample size in jth experiment
+    + `\(\theta_j=\)` probability that a rat receiving no treatment in an experiment develops a tumor in jth experiment
+
+---
+background-image: url(img/bda_rat_data.png)
+background-size: 50%
+background-position: left
+
+## Structure of hierarchical model
+
+.pull-right[
+.bold[Assumption:]
+
+current tumor risk, `\(\theta_{71}\)`, and the 70 historical risks, `\(\theta_1, \ldots, \theta_{70}\)`, are a random sample from a common distribution
+]
+
+.footnote[Fig. 5.1 in Gelman et al. (2004)]
+
+---
+
+## Posterior derivations
+
+Before moving on to hyper-prior selection and tuning, let's explore how to derive out posterior distributions
+
+---
+
+## Hyper priors (second stage)
+
+- In hierarchical models, the choice of the hyper-prior is important because it is possible to end up with an improper posterior distribution.
+
+- For example, in this beta-binomial example a uniform prior on `\(\alpha,\ \beta\)` does not work because the posterior distribution of `\(\alpha,\ \beta\)` is non-integrable.
+
+- An approach that often makes the choice of hyper prior easier is to .bold[think of functions of the parameters that are more intuitive.]
+
+---
+
+## Beta-binomial hyperprior
+
+What are functions of `\(\alpha\)` and `\(\beta\)` that are more intuitive?
+
+--
+
+.bold[Prior mean]: .hidden[XXXX] `\(\quad \mu = \dfrac{\alpha}{\alpha + \beta}\)`
+ 
+--
+
+.bold[Prior sample size:] `\(\quad \eta = \alpha + \beta\)`
+
+--
+
+.bold[Approx. prior SD:]  `\(\quad \eta^* = (\alpha+\beta)^{-1/2}\)`
+
+---
+
+## Noninformative hyperprior - option 1
+
+One way to develop a noninformative prior would be to place uniform densities on `\((\mu, \eta)\)`
+
+
+`\begin{align*}
+\mu =  \dfrac{\alpha}{\alpha + \beta} &amp;\sim {\rm Beta}(1, 1)\\
+\eta = \alpha + \beta &amp;\sim 1
+\end{align*}`
+
+
+What does this imply about the prior of `\(\alpha\)`, `\(\beta\)` on the original scale?
+
+We need to find the Jacobian of the inverse transformation to answer this.
+
+
+---
+
+## Noninformative hyperprior - option 2
+
+An alternative approach is to  place uniform densities on prior the mean and approximate SD
+
+`\begin{align*}
+\mu &amp;=  \dfrac{\alpha}{\alpha + \beta} \sim {\rm Beta}(1, 1)\\
+\eta^* &amp;= (\alpha + \beta)^{-1/2} \sim 1
+\end{align*}`
+
+The implied prior for `\((\alpha, \beta)\)` is given by
+
+`$$\pi(\alpha, \beta) \propto (\alpha + \beta)^{-5/2}$$`
+which is a proper prior distribution (should be more efficient)
+
+---
+
+## Noninformative priors in JAGS
+
+
+```r
+noninform_model&lt;-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dbin(theta[i], n[i])
+}
+
+## priors
+for (i in 1:N){
+   theta[i] ~ dbeta(alpha, beta)
+}
+
+## noninformative hyperpriors
+alpha &lt;- mu / pow(eta, 2)
+beta  &lt;- (1 - mu) / pow(eta, 2)
+mu ~ dbeta(1, 1)
+eta ~ dbeta(1, 1)
+}"
+```
+
+---
+
+## Comparing posterior parameterizations
+
+
+
+&lt;img src="19-hierarchical-beta-binom_files/figure-html/unnamed-chunk-3-1.svg" width="90%" /&gt;
+
+---
+
+## Estimated vs observed tumor rates
+
+.pull-left[
+![](19-hierarchical-beta-binom_files/figure-html/unnamed-chunk-4-1.svg)&lt;!-- --&gt;
+]
+
+.pull-right[
+- The rates `\(\theta_j\)` are .bold[shrunk] toward their sample point estimates (diagonal)
+
+- Smaller experiments are shrunk more and have higher posterior variances
+]
+
+&lt;!-- --- --&gt;
+
+&lt;!-- ## Shrinkage --&gt;
+
+&lt;!-- ```{r echo=FALSE} --&gt;
+&lt;!-- theta_df %&gt;% --&gt;
+&lt;!--   select(Sample = observed, Posterior = m) %&gt;% --&gt;
+&lt;!--   pivot_longer(cols = everything(), names_to = "type", values_to = "estimates") %&gt;% --&gt;
+&lt;!--   mutate(group = row_number()) %&gt;% --&gt;
+&lt;!--   ggplot(aes(x = rev(factor(type)), y = estimates, group= group)) + --&gt;
+&lt;!--   geom_point() + --&gt;
+&lt;!--   geom_path() --&gt;
+&lt;!-- ``` --&gt;
+
+---
+
+&lt;!-- --- --&gt;
+
+&lt;!-- ## Aside - which uninformative prior? --&gt;
+
+&lt;!-- Target: `\(\pi(\alpha, \beta) \rightarrow \pi(\mu, \eta)\)`, so we need to apply a bivariate transformation --&gt;
+
+&lt;!-- `\(\mu =  \dfrac{\alpha}{\alpha + \beta} \qquad \eta = \alpha + \beta\)` --&gt;
+
+&lt;!-- `\(\pi(\mu, \eta) = \pi(\alpha, \beta)\cdot | \left| \dfrac{\partial(\alpha, \beta)}{\partial(\mu, \eta)} \right| |\)` --&gt;
+
+
+
+---
+
+## What if we don't want to be "fully noninformative"
+
+.pull-left[
+Hyperprior for `\(\mu\)` 
+
+- `\(\mu =  \dfrac{\alpha}{\alpha + \beta} \in (0, 1)\)`
+
+- `\(\mu \sim {\rm Beta}(a_0, b_0)\)` is reasonable
+
+- Beta(1, 1) would represent little prior knowledge
+]
+
+.pull-right[
+
+Hyperprior for `\(\eta\)`
+
+- `\(\eta &gt; 0\)` .hidden[$\dfrac{\alpha}{\alpha + \beta}$]
+
+- Many options for distributions, which makes sense?
+
+]
+
+---
+
+## Albert and Hu's approach
+
+- Choose `\(\mu \sim {\rm Beta}(a_0, b_0)\)`
+
+- Reframe `\(\eta\)` in terms of a shrinkage factor, `\(\lambda\)`, and place a prior on `\(\lambda\)`
+
+    + `\(\theta_j | \alpha, \beta, y \sim {\rm Beta}(\alpha + y_j, \beta + n_j - y_j)\)`
+    
+    + `\(E(\theta_j | \alpha, \beta, y ) = \dfrac{\alpha + y_j}{n_j + \alpha + \beta}\)`, now re-express in terms of `\(\mu\)` and `\(\eta\)`
+
+---
+
+## Albert and Hu's approach
+
+- Once you tune your prior on `\(\lambda\)`, this induces a prior on `\(\eta\)`
+
+    `\(\lambda \sim {\rm Unif}(0,1) \qquad \Longrightarrow \qquad \pi(\eta) = \dfrac{n_j}{(n_j + \eta)^2}, \eta&gt;0\)` 
+
+--
+
+- JAGS doesn't "know" this distribution, but it knows the .bold[logistic distribution]
+
+- Let `\(\nu = \log(\eta)\)`, this transformation gives a `\({\rm Logistic}(n_j, 1)\)` PDF
+
+`$$\pi(\nu) = \dfrac{e^{-(\nu-\log n_j)}}{\left[1 + e^{-(\nu-\log n_j) }\right]^2}, \nu \in \mathbb{R}$$`
+- `dlogis` in JAGS
+.footnote[You can derive using the univariate transformation you learned in probability]
+
+---
+
+## JAGS model specification
+
+
+```r
+weak_inform_model&lt;-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dbin(theta[i], n[i])
+}
+
+## priors
+for (i in 1:N){
+   theta[i] ~ dbeta(alpha, beta)
+}
+
+## noninformative hyperpriors
+alpha &lt;- mu * eta
+beta  &lt;- (1 - mu) * eta
+mu ~ dbeta(1, 1)
+eta &lt;- exp(logeta)
+logeta ~ dlogis(logn, 1)
+}"
+```
+
+---
+
+## Comparing posterior parameterizations
+
+
+
+&lt;img src="19-hierarchical-beta-binom_files/figure-html/unnamed-chunk-7-1.svg" width="90%" /&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
