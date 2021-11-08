@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Bayesian regression</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+
+# Bayesian regression
+
+### Stat 340: Bayesian Statistics
+
+
+---
+background-image: url(img/howell-cover.jpg)
+background-size: 40%
+background-position: right
+
+
+.left-wide[
+## Example
+
+- Partial census data for the Dobe area !Kung San, a foraging population
+
+- Compiled from Nancy Howell's interviews
+
+.code80[
+
+```
+##             mean         sd     5.5%     94.5%       histogram
+## height 154.59709  7.7423321 142.8750 167.00500       ▁▃▇▇▅▇▂▁▁
+## weight  44.99049  6.4567081  35.1375  55.76588         ▁▅▇▇▃▂▁
+## age     41.13849 15.9678551  20.0000  70.00000 ▂▅▇▅▃▇▃▃▂▂▂▁▁▁▁
+## male     0.46875  0.4997328   0.0000   1.00000      ▇▁▁▁▁▁▁▁▁▇
+```
+]
+
+]
+
+---
+class: middle
+
+.pull-left[
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-2-1.svg" width="100%" /&gt;
+
+]
+
+.pull-right[
+&lt;br&gt;
+
+## How can we write a .bold[Bayesian] model to relate weight and height of the Kalahari foragers?
+]
+
+---
+
+## Observation-specific mean
+
+We can adapt our normal model for the mean to use an observation-specific mean, `\(\mu_i\)`:
+
+Sampling model: `\(\quad Y_i | \mu_i, \sigma \overset{\rm ind}{\sim} \mathcal{N}(\mu_i, \sigma)\)`
+
+Now we need to link `\(\mu_i\)` and `\(x_i\)`
+
+---
+
+## A weakly informative prior
+
+We may have limited prior information about the regression coefficients, `\(\beta_0\)` and `\(\beta_1\)`, and/or the standard deviation `\(\sigma\)` 
+
+
+Assume independence: `\(\pi(\beta_0, \beta_1, \sigma) = \pi(\beta_0, \beta_1) \pi(\sigma)\)`
+
+1. Assume `\(\beta_0\)` and `\(\beta_1\)` are independent
+    
+    - `\(\pi(\beta_0, \beta_1) = \pi(\beta_0) \pi(\beta_1)\)`
+    - Assign a weakly informative prior each coefficient: `\(\beta_i \sim \mathcal{N}(m_i, s_i)\)`
+    - example:  `\(\quad \mathcal{N}(0, 100)\)`
+
+2. Assign a weakly informative prior to `\(\sigma\)`
+
+    - example: `\(1\sigma^2 \sim {\rm Gamma}(1, 1)\)`
+
+---
+
+## Prior predictive as "sanity check"
+
+.pull-left[
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-3-1.svg" width="95%" /&gt;
+]
+
+.pull-right[
+
+.bold[Simulate the prior predictive]:
+
+1. Draw parameters from their prior distributions
+
+2. Draw data from the sampling model plugging in these simulated parameters
+
+]
+
+---
+
+## Sampling from the prior predictive distribution
+.code108[
+
+```r
+nsim &lt;- 1e4                                       # no. of simulations
+
+prior.sims &lt;- data_frame(                         # simulate from ind. priors 
+  beta0 = rnorm(nsim, 178, 100),
+  beta1 = rnorm(nsim, 0, 10),
+  sigma = runif(nsim, 0, 50)
+)
+```
+
+
+```r
+weight.value &lt;- 45                                # condition on value of x
+```
+
+
+```r
+prior.pred &lt;- prior.sims %&gt;%                      
+  mutate(
+    mu = beta0 + beta1 * weight.value,            # calculate E(y|x)
+    height = rnorm(n(), mean = mu, sd = sigma)    # draw sample from normal
+  )
+```
+]
+
+---
+
+## Deriving the posterior
+
+.bold[Sampling model]: `\(\quad Y_i | x_i, \beta_0, \beta_1, \sigma \sim \mathcal{N}(\beta_0 + \beta_1 x_i, \sigma)\)`
+
+.bold[Joint likelihood]:
+
+`\begin{align*}
+L(\beta_0, \beta_1, \sigma) &amp;= \prod_{i=1}^n \left[ \frac{1}{\sqrt{2 \pi \sigma^2} } \exp \left\{-\frac{1}{2\sigma^2} (y_i - \beta_0 - \beta_1 x_i)^2 \right\} \right] \\
+  &amp;\propto \left(\frac{1}{\sigma^2}\right)^{n/2} \exp \left\{ -\frac{1/\sigma^2}{2} \sum_{i=1}^n (y_i - \beta_0 - \beta_1 x_i)^2 \right\}
+\end{align*}`
+
+.bold[Joint posterior]: `\(\quad \pi(\beta_0, \beta_1, \sigma | {\rm data}) \propto \pi(\beta_0, \beta_1, \sigma) L(\beta_0, \beta_1, \sigma)\)`
+
+---
+
+## JAGS for Bayesian SLR
+
+Write down the model string
+
+
+```r
+slr_model &lt;-"model {
+## sampling model
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1 * x[i], invsigma2)
+}
+
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+invsigma2 ~ dgamma(a, b)
+sigma &lt;- sqrt(pow(invsigma2, -1))
+}"
+```
+
+---
+
+## JAGS for Bayesian SLR
+
+Define the data and set prior parameters
+
+
+```r
+the_data &lt;- list(
+  y = adults$height,   # response variable
+  x = adults$weight,   # explanatory variable
+  N = nrow(adults),    # sample size
+  mu0 = 0,             # prior mean for beta0
+  g0 = 0.0001,         # prior precision for beta0
+  mu1 = 0,             # prior mean for beta1
+  g1 = 0.0001,         # prior precision for beta1
+  a = 1,               # prior shape for 1/sigma2
+  b = 1                # prior scale for 1/sigma2
+)
+```
+
+---
+
+## JAGS for Bayesian SLR
+
+Generate samples from the posterior
+
+
+```r
+posterior &lt;- run.jags(
+  slr_model,
+  data = the_data,
+  n.chains = 1,
+  monitor = c("beta0", "beta1", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  silent.jags = TRUE
+)
+```
+
+---
+
+## Summary of the fitted model
+
+
+```r
+summary(posterior)
+```
+
+```
+##          Lower95      Median     Upper95        Mean         SD        Mode
+## beta0 110.185429 113.8831812 117.5070605 113.8926504 1.85060652 113.6446508
+## beta1   0.823308   0.9048906   0.9842071   0.9046513 0.04065837   0.9064154
+## sigma   4.692724   5.0789234   5.4558836   5.0853508 0.19425986   5.0721822
+##             MCerr MC%ofSD SSeff        AC.10 psrf
+## beta0 0.246236363    13.3    56  0.791740214   NA
+## beta1 0.005487650    13.5    55  0.793173622   NA
+## sigma 0.002747249     1.4  5000 -0.004470933   NA
+```
+
+---
+
+## MCMC diagnostics
+
+
+```r
+mcmc_trace(posterior$mcmc)
+```
+
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-11-1.svg" width="100%" /&gt;
+
+---
+
+## MCMC diagnostics
+
+
+```r
+mcmc_acf(posterior$mcmc)
+```
+
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-12-1.svg" width="100%" /&gt;
+
+---
+
+## Setting `thin = 50`
+
+
+```r
+posterior &lt;- run.jags(
+  slr_model,
+  data = the_data,
+  n.chains = 1,
+  monitor = c("beta0", "beta1", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  thin = 50,
+  silent.jags = TRUE
+)
+```
+
+---
+
+## MCMC diagnostics
+
+
+```r
+mcmc_trace(posterior$mcmc)
+```
+
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-14-1.svg" width="100%" /&gt;
+
+---
+
+## MCMC diagnostics
+
+
+```r
+mcmc_acf(posterior$mcmc)
+```
+
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-15-1.svg" width="100%" /&gt;
+
+---
+
+## Summary of the fitted model
+
+
+```r
+summary(posterior)
+```
+
+```
+##           Lower95      Median     Upper95        Mean         SD        Mode
+## beta0 110.1454786 113.8402826 117.6245171 113.8453309 1.90365131 113.6814705
+## beta1   0.8258936   0.9058944   0.9889891   0.9058291 0.04190476   0.9087755
+## sigma   4.7025891   5.0730595   5.4504958   5.0810728 0.19099318   5.0947710
+##              MCerr MC%ofSD SSeff       AC.500 psrf
+## beta0 0.0381309057     2.0  2492  0.008593566   NA
+## beta1 0.0008545736     2.0  2405  0.009331956   NA
+## sigma 0.0027010514     1.4  5000 -0.027179755   NA
+```
+
+---
+
+## Plotting the fitted model
+
+.pull-left[
+
+```r
+post_means &lt;- apply(
+  posterior$mcmc[[1]], 2, mean
+)
+```
+]
+
+.pull-right[
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-18-1.svg" width="100%" /&gt;
+
+]
+
+
+---
+
+## Sampling from the joint posterior
+
+.pull-left[
+
+```r
+post_draws &lt;- as.data.frame(
+  posterior$mcmc[[1]]
+)
+head(post_draws)
+```
+
+```
+##         beta0     beta1    sigma
+## 6001 118.1336 0.8222446 5.299407
+## 6051 114.7289 0.8955723 4.953780
+## 6101 112.5141 0.9357981 5.153145
+## 6151 113.4607 0.9216525 5.020973
+## 6201 112.2582 0.9389457 5.214484
+## 6251 112.8237 0.9406860 4.993891
+```
+]
+
+.pull-right[
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-20-1.svg" width="100%" /&gt;
+
+]
+
+---
+
+# Generating mean responses
+
+.pull-left[
+.code100[
+
+```r
+mu_at_50 &lt;- with(post_draws, 
+                 beta0 + beta1 * 50)
+```
+]
+
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-22-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
+
+.code100[
+
+```r
+quantile(mu_at_50, probs = c(0.05, 0.95))
+##       5%      95% 
+## 158.5656 159.7114
+```
+]
+
+]
+
+.pull-right[
+&lt;img src="20-slr_files/figure-html/unnamed-chunk-24-1.svg" width="100%" /&gt;
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

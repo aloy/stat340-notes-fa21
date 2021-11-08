@@ -1,0 +1,406 @@
+---
+title: "Bayesian regression"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(bayesrules)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+library(tidyverse)
+library(ggridges)
+library(countdown)
+xaringanExtra::use_tachyons()
+
+Howell1 <- readr::read_delim("https://raw.githubusercontent.com/rmcelreath/rethinking/master/data/Howell1.csv", delim = ";")
+
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+background-image: url(img/howell-cover.jpg)
+background-size: 40%
+background-position: right
+
+
+.left-wide[
+## Example
+
+- Partial census data for the Dobe area !Kung San, a foraging population
+
+- Compiled from Nancy Howell's interviews
+
+.code80[
+```{r message=FALSE, warning=FALSE, tidy=FALSE, echo=FALSE}
+adults <- filter(Howell1, age >= 18)
+rethinking::precis(adults)
+```
+]
+
+]
+
+---
+class: middle
+
+.pull-left[
+```{r echo=FALSE, fig.height=4, fig.width=4, out.width="100%"}
+ggplot(data = adults) +
+  geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
+  labs(x = "Weight (in kg)",
+       y = "Height (in cm)") +
+  theme_light()
+```
+
+]
+
+.pull-right[
+<br>
+
+## How can we write a .bold[Bayesian] model to relate weight and height of the Kalahari foragers?
+]
+
+---
+
+## Observation-specific mean
+
+We can adapt our normal model for the mean to use an observation-specific mean, $\mu_i$:
+
+Sampling model: $\quad Y_i | \mu_i, \sigma \overset{\rm ind}{\sim} \mathcal{N}(\mu_i, \sigma)$
+
+Now we need to link $\mu_i$ and $x_i$
+
+---
+
+## A weakly informative prior
+
+We may have limited prior information about the regression coefficients, $\beta_0$ and $\beta_1$, and/or the standard deviation $\sigma$ 
+
+
+Assume independence: $\pi(\beta_0, \beta_1, \sigma) = \pi(\beta_0, \beta_1) \pi(\sigma)$
+
+1. Assume $\beta_0$ and $\beta_1$ are independent
+    
+    - $\pi(\beta_0, \beta_1) = \pi(\beta_0) \pi(\beta_1)$
+    - Assign a weakly informative prior each coefficient: $\beta_i \sim \mathcal{N}(m_i, s_i)$
+    - example:  $\quad \mathcal{N}(0, 100)$
+
+2. Assign a weakly informative prior to $\sigma$
+
+    - example: $1\sigma^2 \sim {\rm Gamma}(1, 1)$
+
+---
+
+## Prior predictive as "sanity check"
+
+.pull-left[
+```{r echo=FALSE, fig.height=2.5, fig.width=4, out.width = "95%"}
+nsim <- 1e4
+
+prior.sims <- data.frame(
+  beta0 = rnorm(nsim, 178, 100),
+  beta1 = rnorm(nsim, 0, 10),
+  sigma = runif(nsim, 0, 50)
+)
+
+weight.value <- 45
+
+prior.pred <- prior.sims %>%
+  mutate(
+    mu = beta0 + beta1 * weight.value,
+    height = rnorm(n(), mean = mu, sd = sigma)
+  )
+
+ggplot(data = prior.pred) +
+  geom_density(mapping = aes(x = height)) +
+  labs(x = "height | weight = 45",
+       title = "Prior predictive density") + 
+  theme_light()
+```
+]
+
+.pull-right[
+
+.bold[Simulate the prior predictive]:
+
+1. Draw parameters from their prior distributions
+
+2. Draw data from the sampling model plugging in these simulated parameters
+
+]
+
+---
+
+## Sampling from the prior predictive distribution
+.code108[
+```{r eval=FALSE}
+nsim <- 1e4                                       # no. of simulations
+
+prior.sims <- data_frame(                         # simulate from ind. priors 
+  beta0 = rnorm(nsim, 178, 100),
+  beta1 = rnorm(nsim, 0, 10),
+  sigma = runif(nsim, 0, 50)
+)
+```
+
+```{r eval=FALSE}
+weight.value <- 45                                # condition on value of x
+```
+
+```{r eval=FALSE}
+prior.pred <- prior.sims %>%                      
+  mutate(
+    mu = beta0 + beta1 * weight.value,            # calculate E(y|x)
+    height = rnorm(n(), mean = mu, sd = sigma)    # draw sample from normal
+  )
+```
+]
+
+---
+
+## Deriving the posterior
+
+.bold[Sampling model]: $\quad Y_i | x_i, \beta_0, \beta_1, \sigma \sim \mathcal{N}(\beta_0 + \beta_1 x_i, \sigma)$
+
+.bold[Joint likelihood]:
+
+\begin{align*}
+L(\beta_0, \beta_1, \sigma) &= \prod_{i=1}^n \left[ \frac{1}{\sqrt{2 \pi \sigma^2} } \exp \left\{-\frac{1}{2\sigma^2} (y_i - \beta_0 - \beta_1 x_i)^2 \right\} \right] \\
+  &\propto \left(\frac{1}{\sigma^2}\right)^{n/2} \exp \left\{ -\frac{1/\sigma^2}{2} \sum_{i=1}^n (y_i - \beta_0 - \beta_1 x_i)^2 \right\}
+\end{align*}
+
+.bold[Joint posterior]: $\quad \pi(\beta_0, \beta_1, \sigma | {\rm data}) \propto \pi(\beta_0, \beta_1, \sigma) L(\beta_0, \beta_1, \sigma)$
+
+---
+
+## JAGS for Bayesian SLR
+
+Write down the model string
+
+```{r}
+slr_model <-"model {
+## sampling model
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1 * x[i], invsigma2)
+}
+
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+```
+
+---
+
+## JAGS for Bayesian SLR
+
+Define the data and set prior parameters
+
+```{r}
+the_data <- list(
+  y = adults$height,   # response variable
+  x = adults$weight,   # explanatory variable
+  N = nrow(adults),    # sample size
+  mu0 = 0,             # prior mean for beta0
+  g0 = 0.0001,         # prior precision for beta0
+  mu1 = 0,             # prior mean for beta1
+  g1 = 0.0001,         # prior precision for beta1
+  a = 1,               # prior shape for 1/sigma2
+  b = 1                # prior scale for 1/sigma2
+)
+```
+
+---
+
+## JAGS for Bayesian SLR
+
+Generate samples from the posterior
+
+```{r warning=FALSE, message=FALSE, results='hide'}
+posterior <- run.jags(
+  slr_model,
+  data = the_data,
+  n.chains = 1,
+  monitor = c("beta0", "beta1", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  silent.jags = TRUE
+)
+```
+
+---
+
+## Summary of the fitted model
+
+```{r}
+summary(posterior)
+```
+
+---
+
+## MCMC diagnostics
+
+```{r fig.height = 3, fig.width = 9, out.width = "100%"}
+mcmc_trace(posterior$mcmc)
+```
+
+---
+
+## MCMC diagnostics
+
+```{r fig.height = 3, fig.width = 9, out.width = "100%"}
+mcmc_acf(posterior$mcmc)
+```
+
+---
+
+## Setting `thin = 50`
+
+```{r warning=FALSE, message=FALSE, results='hide'}
+posterior <- run.jags(
+  slr_model,
+  data = the_data,
+  n.chains = 1,
+  monitor = c("beta0", "beta1", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  thin = 50,
+  silent.jags = TRUE
+)
+```
+
+---
+
+## MCMC diagnostics
+
+```{r fig.height = 3, fig.width = 9, out.width = "100%"}
+mcmc_trace(posterior$mcmc)
+```
+
+---
+
+## MCMC diagnostics
+
+```{r fig.height = 3, fig.width = 9, out.width = "100%"}
+mcmc_acf(posterior$mcmc)
+```
+
+---
+
+## Summary of the fitted model
+
+```{r}
+summary(posterior)
+```
+
+---
+
+## Plotting the fitted model
+
+.pull-left[
+```{r}
+post_means <- apply(
+  posterior$mcmc[[1]], 2, mean
+)
+```
+]
+
+.pull-right[
+```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "100%"}
+ggplot(data = adults) +
+  geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
+  geom_abline(intercept = post_means["beta0"], slope = post_means["beta1"], color = "steelblue", size = 1) +
+  theme_light()
+```
+
+]
+
+
+---
+
+## Sampling from the joint posterior
+
+.pull-left[
+```{r}
+post_draws <- as.data.frame(
+  posterior$mcmc[[1]]
+)
+head(post_draws)
+```
+]
+
+.pull-right[
+```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "100%"}
+ggplot(data = adults) +
+  geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
+  geom_abline(data = post_draws[1:1000,], mapping = aes(intercept = beta0, slope = beta1), alpha = 0.1, color = "steelblue") +
+  labs(title = "1000 draws from joint posterior") +
+  theme_light()
+```
+
+]
+
+---
+
+## Generating mean responses
+
+.pull-left[
+.code100[
+```{r}
+mu_at_50 <- with(post_draws, 
+                 beta0 + beta1 * 50)
+```
+]
+
+```{r fig.height=3, fig.width=4, echo=FALSE, out.width="65%", fig.align='center'}
+mcmc_areas(data.frame(mu50 = mu_at_50), prob = .9)
+```
+
+.code100[
+```{r collapse=TRUE}
+quantile(mu_at_50, probs = c(0.05, 0.95))
+```
+]
+
+]
+
+.pull-right[
+```{r fig.height=4, fig.width=4, echo=FALSE, out.width="100%"}
+ggplot(data = adults) +
+  geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
+  geom_abline(intercept = post_means["beta0"], slope = post_means["beta1"], color = "blue") +
+  geom_errorbar(mapping = aes(x = 50, ymin = 158.5691, ymax = 159.6651), color = "orange") +
+  labs(title = "1000 draws from joint posterior") +
+  theme_light()
+```
+]
