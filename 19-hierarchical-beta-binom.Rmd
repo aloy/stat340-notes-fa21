@@ -217,7 +217,7 @@ p1 + p2
 ## Estimated vs observed tumor rates
 
 .pull-left[
-```{r echo=FALSE, fig.height = 5, fig.width = 5}
+```{r echo=FALSE, fig.height = 5, fig.width = 5, out.width = "90%"}
 theta_df <- mcmc_intervals_data(posterior$mcmc, regex_pars = "theta", prob = 0.9)
 
 theta_df <- mutate(theta_df, observed = y/n)

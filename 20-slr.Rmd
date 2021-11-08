@@ -336,7 +336,7 @@ post_means <- apply(
 ]
 
 .pull-right[
-```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "100%"}
+```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "90%"}
 ggplot(data = adults) +
   geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
   geom_abline(intercept = post_means["beta0"], slope = post_means["beta1"], color = "steelblue", size = 1) +
@@ -360,7 +360,7 @@ head(post_draws)
 ]
 
 .pull-right[
-```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "100%"}
+```{r echo=FALSE, fig.height=4, fig.width=4, out.width = "90%"}
 ggplot(data = adults) +
   geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
   geom_abline(data = post_draws[1:1000,], mapping = aes(intercept = beta0, slope = beta1), alpha = 0.1, color = "steelblue") +
@@ -395,7 +395,7 @@ quantile(mu_at_50, probs = c(0.05, 0.95))
 ]
 
 .pull-right[
-```{r fig.height=4, fig.width=4, echo=FALSE, out.width="100%"}
+```{r fig.height=4, fig.width=4, echo=FALSE, out.width="90%"}
 ggplot(data = adults) +
   geom_point(mapping = aes(x = weight, y = height), alpha = 0.5) +
   geom_abline(intercept = post_means["beta0"], slope = post_means["beta1"], color = "blue") +
