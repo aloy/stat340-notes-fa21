@@ -157,6 +157,8 @@ eta ~ dbeta(1, 1)
 
 &lt;img src="19-hierarchical-beta-binom_files/figure-html/unnamed-chunk-3-1.svg" width="90%" /&gt;
 
+
+
 ---
 
 ## Estimated vs observed tumor rates
@@ -170,32 +172,6 @@ eta ~ dbeta(1, 1)
 
 - Smaller experiments are shrunk more and have higher posterior variances
 ]
-
-&lt;!-- --- --&gt;
-
-&lt;!-- ## Shrinkage --&gt;
-
-&lt;!-- ```{r echo=FALSE} --&gt;
-&lt;!-- theta_df %&gt;% --&gt;
-&lt;!--   select(Sample = observed, Posterior = m) %&gt;% --&gt;
-&lt;!--   pivot_longer(cols = everything(), names_to = "type", values_to = "estimates") %&gt;% --&gt;
-&lt;!--   mutate(group = row_number()) %&gt;% --&gt;
-&lt;!--   ggplot(aes(x = rev(factor(type)), y = estimates, group= group)) + --&gt;
-&lt;!--   geom_point() + --&gt;
-&lt;!--   geom_path() --&gt;
-&lt;!-- ``` --&gt;
-
----
-
-&lt;!-- --- --&gt;
-
-&lt;!-- ## Aside - which uninformative prior? --&gt;
-
-&lt;!-- Target: `\(\pi(\alpha, \beta) \rightarrow \pi(\mu, \eta)\)`, so we need to apply a bivariate transformation --&gt;
-
-&lt;!-- `\(\mu =  \dfrac{\alpha}{\alpha + \beta} \qquad \eta = \alpha + \beta\)` --&gt;
-
-&lt;!-- `\(\pi(\mu, \eta) = \pi(\alpha, \beta)\cdot | \left| \dfrac{\partial(\alpha, \beta)}{\partial(\mu, \eta)} \right| |\)` --&gt;
 
 
 

@@ -212,6 +212,8 @@ p2 <- ggplot(data = draws1, aes(x = alpha, y = beta)) +
 p1 + p2
 ```
 
+
+
 ---
 
 ## Estimated vs observed tumor rates
@@ -240,32 +242,6 @@ ggplot(theta_df, aes(x = jitter(observed))) +
 
 - Smaller experiments are shrunk more and have higher posterior variances
 ]
-
-<!-- --- -->
-
-<!-- ## Shrinkage -->
-
-<!-- ```{r echo=FALSE} -->
-<!-- theta_df %>% -->
-<!--   select(Sample = observed, Posterior = m) %>% -->
-<!--   pivot_longer(cols = everything(), names_to = "type", values_to = "estimates") %>% -->
-<!--   mutate(group = row_number()) %>% -->
-<!--   ggplot(aes(x = rev(factor(type)), y = estimates, group= group)) + -->
-<!--   geom_point() + -->
-<!--   geom_path() -->
-<!-- ``` -->
-
----
-
-<!-- --- -->
-
-<!-- ## Aside - which uninformative prior? -->
-
-<!-- Target: $\pi(\alpha, \beta) \rightarrow \pi(\mu, \eta)$, so we need to apply a bivariate transformation -->
-
-<!-- $\mu =  \dfrac{\alpha}{\alpha + \beta} \qquad \eta = \alpha + \beta$ -->
-
-<!-- $\pi(\mu, \eta) = \pi(\alpha, \beta)\cdot | \left| \dfrac{\partial(\alpha, \beta)}{\partial(\mu, \eta)} \right| |$ -->
 
 
 
