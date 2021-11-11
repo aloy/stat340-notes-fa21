@@ -15,7 +15,7 @@ output:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
 library(runjags)
 library(bayesrules)
 library(bayesplot)
@@ -56,16 +56,16 @@ Based on past bikeshare analyses, suppose we have the following prior understand
 
 (b) To explore our combined prior understanding of the model parameters, simulate the Normal regression prior model for 1000 iterations.
 
-You can simulate this directly in R using the `rnorm` and `rexp` functions.
-```{r}
+    You can simulate this directly in R using the `rnorm` and `rexp` functions.
+    ```{r}
 S <- 1000
 beta0 <- rnorm(S, 5000, 1000)
 beta1 <- rnorm(S, 100, 40)
 sigma <- rexp(S, .0008)
 ```
 
-Note: You can also simulate from the prior model using JAGS by passing in `NA`s for the response variable.
-```{r}
+    Note: You can also simulate from the prior model using JAGS by passing in `NA`s for the response variable.
+    ```{r results='hide', message=FALSE, warning=FALSE}
 prior_model <- "model{
   # Likelihood
   for(i in 1:n) {
@@ -91,17 +91,19 @@ prior_sim <- run.jags(
   data = prior_data,
   n.chains = 1,
   sample = 1000,
-  monitor = c("beta0", "beta1", "sigma", "y")
+  monitor = c("beta0", "beta1", "sigma", "y"),
+  silent.jags = TRUE
 )
 ```
 
 
 (c) Plot 100 prior plausible model lines ($\beta_0 + \beta_1 x_c$) and four data sets simulated under the priors. Since you used a centered version of temperature, you can either stick with this centered predictor, or "back transform" the plausible lines. To back transform, notice that $\beta_0 + \beta_1 x_c = (\beta_0 - \beta_1 \overline{x}) + \beta_1 x$.
 
-Describe our overall prior understanding of the relationship between ridership and humidity.
+    Describe our overall prior understanding of the relationship between ridership and humidity.
 
-First, let's plot the 100 prior plausible model lines with the centered predictors. One way to do this is using `geom_abline` in `ggplot2`:
-```{r}
+    First, let's plot the 100 prior plausible model lines with the centered predictors. One way to do this is using `geom_abline` in `ggplot2`:
+    ```{r message=FALSE, fig.height = 2.5, fig.width = 3.5}
+library(tidyverse)
 prior_lines <- data.frame(beta0 = beta0, beta1 = beta1) %>%
   mutate(group = row_number())
 
@@ -111,8 +113,8 @@ ggplot(prior_lines[1:100,]) +
        y = c(20, 10000))
 ```
 
-To create an uncentered version on the original x-scale, we need to alter `beta0`:
-```{r}
+    To create an uncentered version on the original x-scale, we need to alter `beta0`:
+    ```{r, fig.height = 2.5, fig.width = 3.5}
 xbar <- mean(bikes$temp_actual)
 ggplot(prior_lines[1:100,]) + 
   geom_abline(aes(intercept = beta0 - beta1 * xbar, slope = beta1, group = group), alpha = 0.5) +
@@ -120,9 +122,8 @@ ggplot(prior_lines[1:100,]) +
        y = c(20, 10000))
 ```
 
-An alternative way to do this is to fit a line through two points on the edge of plausible $x_c$ values using `geom_segment()`. Let's assume that centered temperature ranges from $-50$ to 50
-
-```{r}
+    An alternative way to do this is to fit a line through two points on the edge of plausible $x_c$ values using `geom_segment()`. Let's assume that centered temperature ranges from $-50$ to 50
+    ```{r, fig.height = 2.5, fig.width = 3.5}
 prior_lines <- data.frame(beta0 = beta0, beta1 = beta1, x = -50, xend = 50) %>%
   mutate(y = beta0 + beta1 * x, yend = beta0 + beta1 * xend)
 
@@ -130,27 +131,15 @@ ggplot(prior_lines[1:100,]) +
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend), alpha = 0.5)
 ```
 
-Now, let's simulate four data sets under the priors:
-
-```{r}
+    Now, let's simulate four data sets under the priors:
+    ```{r}
 xc <- bikes$temp_actual - mean(bikes$temp_actual)
 y1 <- rnorm(500, mean = beta0[1] + beta1[1] * xc, sd = sigma[1])
 y2 <- rnorm(500, mean = beta0[2] + beta1[2] * xc, sd = sigma[2])
 y3 <- rnorm(500, mean = beta0[3] + beta1[3] * xc, sd = sigma[3])
 y4 <- rnorm(500, mean = beta0[4] + beta1[4] * xc, sd = sigma[4])
 
-y1 <- prior_sim$mcmc[[1]][,4:503][3,]
-
-prior_data <- bikes %>%
-  select(rides, temp_actual) %>%
-  mutate(
-    xc = temp_actual - mean(temp_actual),
-    prior_y1 = rnorm(length(rides), beta0[1] + beta1[1] * xc, sigma[1]),
-    prior_y2 = rnorm(length(rides), beta0[2] + beta1[2] * xc, sigma[2]),
-    prior_y3 = rnorm(length(rides), beta0[3] + beta1[3] * xc, sigma[3]),
-    prior_y4 = rnorm(length(rides), beta0[4] + beta1[4] * xc, sigma[4]),
-    )
-
+library(patchwork)
 p1 <- ggplot(NULL) + geom_point(aes(x = xc, y = y1))
 p2 <- ggplot(NULL) + geom_point(aes(x = xc, y = y2))
 p3 <- ggplot(NULL) + geom_point(aes(x = xc, y = y3))
@@ -159,8 +148,7 @@ p4 <- ggplot(NULL) + geom_point(aes(x = xc, y = y4))
 p1 + p2 + p3 + p4 + plot_layout(nrow = 2)
 ```
 
-
-Regardless of the plot, your discussion should center around whether the plot reflects your the prior understanding you were attempting to model.
+    Regardless of the plot, your discussion should center around whether the plot reflects your the prior understanding you were attempting to model.
 
 
 
@@ -170,7 +158,9 @@ With the priors in place, it's time to examine the data.
 
 (a) Plot and discuss the observed relationship between ridership and humidity in the bikes data.
 
-```{r message=FALSE}
+    From the scatterplot, we see a moderate, positive, linear association between the temperature and number os riders.
+
+    ```{r message=FALSE, fig.height = 2.5, fig.width = 3.5}
 ggplot(bikes, aes(x = temp_actual, y = rides)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", se = FALSE)
@@ -179,7 +169,7 @@ ggplot(bikes, aes(x = temp_actual, y = rides)) +
 
 (b) Does simple Normal regression seem to be a reasonable approach to modeling this relationship? Explain.
 
-Yes, there appears to be a postive linear association between temperature and ridership.
+    Yes, there appears to be a postive linear association between temperature and ridership.
 
 
 ### Model fitting
@@ -188,7 +178,7 @@ We can now simulate our posterior model of the relationship between ridership an
 
 (a) Use JAGS to simulate the Normal regression posterior model. Do so with 5 chains run for 8000 iterations each. 
 
-```{r}
+    ```{r results='hide', message=FALSE, warning=FALSE}
 post_model <- "model{
   # Likelihood
   for(i in 1:n) {
@@ -223,9 +213,9 @@ posterior <- run.jags(
 
 (b) Perform and discuss some MCMC diagnostics to determine whether or not we can "trust" these simulation results.
 
-All of our diagnostics check out. The chains appear to be stationary and well mixed. Further, we see no issues with autocorrelation.
+    All of our diagnostics check out. The chains appear to be stationary and well mixed. Further, we see no issues with autocorrelation.
 
-```{r}
+    ```{r fig.height = 3, fig.width = 9, out.width = "100%"}
 mcmc_trace(posterior$mcmc)
 mcmc_dens_overlay(posterior$mcmc)
 mcmc_acf(posterior$mcmc)
@@ -234,7 +224,7 @@ mcmc_acf(posterior$mcmc)
 
 (c) Plot 100 posterior model lines for the relationship between ridership and temperature. Compare and contrast these to the prior model lines from above.
 
-```{r}
+    ```{r, fig.height = 2.5, fig.width = 3.5}
 posterior_lines <- posterior$mcmc[[1]][1:100,c("beta0", "beta1")] %>%
   as.data.frame() %>%
   mutate(x = -50, xend = 50, y = beta0 + beta1 * x, yend = beta0 + beta1 * xend)
@@ -243,8 +233,8 @@ ggplot(posterior_lines) +
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend), alpha = 0.5)
 ```
 
-We can also put this on the original x-axis
-```{r}
+    We can also put this on the original x-axis
+    ```{r, fig.height = 2.5, fig.width = 3.5}
 posterior_lines2 <- posterior$mcmc[[1]][1:100,c("beta0", "beta1")] %>%
   as.data.frame() %>%
   mutate(x = 0, xend = 100, y = beta0 - beta1 * xbar + beta1 * x, yend = beta0 - beta1 * xbar + beta1 * xend)
@@ -261,23 +251,74 @@ Finally, let's dig deeper into our posterior understanding of the relationship b
 
 (a) Provide a summary of your posterior model, including 95% credible intervals.
 
-```{r}
+    We can easily `print` this type of summary.
+    ```{r}
 print(posterior, digits = 3)
 ```
 
 
 (b) Interpret the posterior median value of the $\sigma$ parameter.
 
+    The posterior median of $\sigma$ is approximately `r round(summary(posterior)["sigma","Median"], 3)`.
+
+    On average, we can expect the observed ridership on a given day to fall about `r round(summary(posterior)["sigma","Median"])` rides from the average ridership on days of the same temperature.
+
+    Note: If you want to pool the draws from all of the chains and calculate this (or CIs) manually, then the `tidy_draws()` function from the `tidybayes` R package is worth exploring.
+
 (c) Interpret the 95% posterior credible interval for the temperature coefficient,  $\beta_1$.
+
+    From our summary, we see the 95% posterior credible interval for the temperature coefficient is: `r round(posterior$summaries["beta1","Lower95"], 2)` to `r round(posterior$summaries["beta1","Upper95"], 2)`
+
+    For every one degree increase in temperature, we expect ridership to increase between roughly `r round(posterior$summaries["beta1","Lower95"], 2)` and `r round(posterior$summaries["beta1","Upper95"], 2)` riders, with 0.95 posterior probability.
 
 (d) Do we have ample posterior evidence that there’s a positive association between ridership and temperature? Explain.
 
+    Yes, 0 is far below our 95% credible interval.
+
 ### Prediction
 
-Tomorrow is supposed to be 90% humidity in Washington, D.C. What levels of ridership should we expect?
+Tomorrow is supposed to be $67^\circ$F in Washington, D.C. What levels of ridership should we expect?
 
-(a) Simulate two posterior models: the posterior model for the typical number of riders on 90% humidity days; and the posterior predictive model for the number of riders tomorrow.
+(a) Simulate two posterior models: the posterior model for the typical number of riders on $67^\circ$F days; and the posterior predictive model for the number of riders tomorrow.
+
+    First, let's simulate from the model for the typical (average) number of riders. To do this, we generate $\mu^{(1)}, \ldots, \mu^{(S)}$ draws by calculating $\mu^{(i)} = \beta^{(i)}_0 + \beta_1^{(i)} x_i$. Here, it's important to know whether you need to center $x=67$ or not. Since I used centered variables in my `posterior` model, I first need to center 67.
+
+    ```{r}
+library(tidybayes)
+
+mean67 <- tidy_draws(posterior) %>%
+  mutate(
+    xc = 67 - mean(bikes$temp_actual),
+    mu = beta0 + beta1 * xc
+  )
+```
+
+    To simulate from the posterior predictive distribution we need to generate a value of our response for each $\mu^{(i)}$, so we draw $y^{(i)}_{new} \sim \mathcal{N}(\mu^{(i)}, \sigma^{(i)})$.
+
+    ```{r}
+predict67 <- tidy_draws(posterior) %>%
+  mutate(
+    xc = 67 - mean(bikes$temp_actual),
+    mu = beta0 + beta1 * xc,
+    y_new = rnorm(length(mu), mu, sd = sigma)
+  )
+```
+
 
 (b) Construct, discuss, and compare density plot visualizations for the two separate posterior models in the previous part.
 
+    You could use `mcmc_areas_ridges` in `bayesplot`, or you could use `ggplot`. Either way, you should notice that the distributions are centered at the same location, but that the variability is far larger for the new observation.
+
+    ```{r fig.height = 3, fig.width=5}
+mcmc_areas_ridges(predict67, pars = c("mu", "y_new"))
+```
+
+
 (c) Calculate and interpret an 80% posterior prediction interval for the number of riders tomorrow
+
+    We expect the number of riders tomorrow, a $67^\circ$F day, to be between approximately `r round(quantile(predict67$y_new, probs = .1))` and `r round(quantile(predict67$y_new, probs = .9))` riders, with 80% posterior probability.
+
+    ```{r}
+quantile(predict67$y_new, probs = c(0.1, 0.9))
+```
+
