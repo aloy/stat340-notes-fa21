@@ -1,9 +1,9 @@
 ---
 geometry: margin=.74in 
 output:
-  pdf_document: default
   html_document:
     code_download: true
+  pdf_document: default
 ---
 
 ```{r setup, include = FALSE, eval=TRUE}
