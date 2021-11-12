@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Bayesian model checking</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Stat 340: Bayesian Statistics" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/hygge.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/my-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/my-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide, left, middle
+
+# Bayesian model checking
+
+### Stat 340: Bayesian Statistics
+
+
+---
+
+## Coffee ratings
+
+- Interest is in modeling coffee ratings on a 0–100 scale
+
+- Possible predictors include grades on features such as its aroma, aftertaste, flavor, etc.
+
+- Data available in `bayesrules` as `coffee_ratings`
+
+
+
+```r
+library(bayesrules)
+data("coffee_ratings")
+coffee_ratings &lt;- coffee_ratings %&gt;% 
+  select(farm_name, total_cup_points, aroma, aftertaste)
+```
+
+
+.footnote[Data originally from [TidyTuesday](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-07-07), contributed by James LeDoux]
+
+---
+class: inverse
+
+# Your turn 1
+
+.bold[
+Suppose we want to fit a model with the following sampling model:
+
+`\begin{align*}
+Y_i | \beta_0, \beta_1, \sigma &amp;\overset{ind}{\sim} \mathcal{N}(\mu_i, \sigma)\\
+\mu_i &amp;= \beta_0 + \beta_1 {\tt aroma}
+\end{align*}`
+
+What assumptions/conditions does this model require?
+]
+
+---
+
+class: inverse
+
+# Your turn 2
+
+.bold[
+The coffee_ratings data includes ratings and features of 1339 different batches of beans grown on 571 different farms. 
+
+Explain why using this data to model ratings by aroma likely violates the independence assumption.
+]
+
+---
+
+## Updated example
+
+Let's suppose we only have one observation per farm
+
+
+```r
+set.seed(84735)
+new_coffee &lt;- coffee_ratings %&gt;% 
+  group_by(farm_name) %&gt;% 
+  sample_n(1) %&gt;% 
+  ungroup()
+```
+
+
+```
+## # A tibble: 572 × 4
+##   farm_name                       total_cup_points aroma aftertaste
+##   &lt;fct&gt;                                      &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;
+## 1 -                                           84    7.67       7.67
+## 2 1                                           76.2  7.33       6.5 
+## 3 200 farms                                   67.9  6.75       6.42
+## 4 2000 farmers                                72.3  6.92       7.08
+## 5 2000 farms                                  80.8  7.42       7.42
+## 6 a shu she coffee 阿束社咖啡莊園             80.1  7.25       7.25
+## # … with 566 more rows
+```
+
+---
+
+## Weakly informative prior model
+
+
+
+
+```
+## 
+## JAGS model summary statistics from 15000 samples (thin = 80; chains = 3; adapt+burnin = 6000):
+##                                                                             
+##       Lower95 Median Upper95 Mean     SD Mode    MCerr MC%ofSD SSeff  AC.800
+## beta0    31.4   35.4    39.1 35.3   1.95 35.4   0.0603     3.1  1044   0.268
+## beta1    5.67   6.17    6.68 6.17  0.257 6.16  0.00788     3.1  1061   0.269
+## sigma    1.84   1.95    2.07 1.96 0.0577 1.95 0.000473     0.8 14887 0.00131
+##           
+##       psrf
+## beta0 1.01
+## beta1 1.01
+## sigma    1
+## 
+## Total time taken: 23.1 seconds
+```
+
+---
+class: inverse 
+# Your turn 3
+
+.bold[Based on this plot of the fitted model, do you see any issues with our assumptions?]
+
+&lt;img src="22-slr-checking_files/figure-html/yt3-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Residual plots
+
+- In previous courses, you used residual plots to diagnose linearity, constant variance assumptions
+
+- `\(e_i = y - (\widehat{\beta}_0 + \widehat{\beta}_1 x_i)\)`
+
+- To create a Bayesian analog, use posterior point estimates for `\(\widehat{\beta}_0\)` and `\(\widehat{\beta}_1\)`
+
+
+---
+
+## Residual plots
+
+If you run multiple chains, `tidybayes::tidy_draws` makes it easy to combine them into a single data frame
+
+```r
+post_draws &lt;- tidybayes::tidy_draws(slr_draws$mcmc) 
+```
+
+To calculate `\(\widehat{\beta}_0 + \widehat{\beta}_1 x_i\)` and `\(e_i\)`, I find it easiest to add columns to the data
+
+```r
+resids &lt;- new_coffee %&gt;%
+  mutate(
+    beta0 = median(post_draws$beta0),
+    beta1 = median(post_draws$beta1),
+    yhat  = beta0 + beta1 * aroma,
+    resid = total_cup_points - yhat
+  )
+```
+
+---
+
+## Residual plots
+
+Based on this residual plot, are there any model deficiencies?
+
+&lt;img src="22-slr-checking_files/figure-html/unnamed-chunk-8-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Residual normal Q-Q plot
+
+We can make other familiar plots of residuals using these posterior estimates
+
+&lt;img src="22-slr-checking_files/figure-html/unnamed-chunk-9-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## Posterior prediction plots
+
+Plot predicted y (with intervals) vs. observed y and explore discrepancies
+
+.pull-left[
+&lt;img src="22-slr-checking_files/figure-html/unnamed-chunk-10-1.svg" width="100%" /&gt;
+
+]
+
+
+.pull-right[
+
+&lt;br&gt;
+
+For each simulated `\((\beta_0^{(j)}, \beta_1^{(j)}, \sigma^{(j)})\)`
+
+- Calculate `\(\mu^{(j)}_i = \beta_0^{(j)} + \beta_1^{(j)}x_i\)`
+
+- Simulate `\(\tilde{y}^{(j)}_i\)` from `\(\mathcal{N}(\mu^{(j)}_i, \sigma^{(i)})\)`
+]
+
+---
+
+## Posterior prediction plots
+
+Create a function to calculate `\(\mu_i\)` given an `\(x_i\)` value
+
+```r
+mu_link &lt;- function(x) {
+  post_draws[["beta0"]] + post_draws[["beta1"]] * x
+}
+```
+
+Calculate S `\(\mu_i\)`'s for each values in the x vector (`new_coffee$aroma` here)
+
+```r
+mu_draws&lt;- sapply(new_coffee$aroma, mu_link)
+```
+
+Now, we have a `\(S \times n\)` matrix, each column corresponds to an `\(x_i\)`
+
+
+---
+
+## Posterior prediction plots
+
+Simulate one `\(\tilde{y}_i\)` for each `\(\mu_i\)` in each column
+
+```r
+S &lt;- nrow(post_draws)
+y_draws &lt;- apply(mu_draws, 2, function(x) rnorm(S, x, post_draws[["sigma"]]))
+```
+
+Now, we have a `\(S \times n\)` matrix of simulated observations
+
+Calculate the mean and PI for each column
+
+```r
+y_means &lt;- colMeans(y_draws)
+y_pis   &lt;- apply(y_draws, 2, quantile, probs = c(0.05, 0.95))
+```
+
+---
+
+## Posterior prediction plots
+
+To use `ggplot2`, let's combine the results into a data frame
+
+
+```r
+post_pred_data &lt;- data.frame(
+  y = new_coffee$total_cup_points, # original y
+  y_pred = y_means,                # avg. predicted response
+  y_lo = y_pis[1,],                # lower bound of predicted response
+  y_hi = y_pis[2,]                 # upper bound of predicted response
+)
+```
+
+Render the plot
+
+```r
+ggplot(post_pred_data, aes(x = y)) +
+  geom_point(aes(y = y_means), alpha = 0.5) +
+  geom_linerange(aes(ymin = y_lo, ymax = y_hi), alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "dodgerblue")
+```
+
+
+---
+
+## Predictive residuals
+
+Plot residual interval estimates vs. predictor
+
+.pull-left[
+&lt;img src="22-slr-checking_files/figure-html/unnamed-chunk-17-1.svg" width="100%" /&gt;
+]
+
+.pull-right[
+
+&lt;br&gt;
+
+- Does this plot highlight any deficiencies of our model?
+
+- Is it easier to read than the posterior prediction plot?
+]
+
+---
+
+## Predictive residuals
+
+We can start with our posterior prediction plot data set, then calculate the midpoint and endpoints of our residual intervals using those prediction intervals
+
+```r
+pred_resids &lt;- post_pred_data %&gt;%
+  mutate(
+    resid = y - y_pred,
+    resid_lo = y - y_lo,
+    resid_hi = y - y_hi,
+    x = jitter(new_coffee$aroma, factor = 2.5) # avoiding some overlap
+)
+```
+ 
+Create the plot
+
+
+```r
+ggplot(pred_resids, aes(x = x)) +
+  geom_point(aes(y = resid), alpha = 0.5) +
+  geom_linerange(aes(ymin = resid_lo, ymax = resid_hi), alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "dodgerblue")
+```
+
+---
+
+## Posterior predictive checks
+
+We can also examine the density of the observed and predicted responses.
+
+.pull-left[
+&lt;img src="22-slr-checking_files/figure-html/unnamed-chunk-20-1.svg" width="100%" /&gt;
+]
+
+.pull-right[
+- Generate a new data set for each `\((\beta_0^{(j)}, \beta_1^{(j)}, \sigma^{(j)})\)` for all `\(x_i\)` in the data set
+
+- Same process as with posterior prediction plots, different display
+
+- A good model should for a data set should be able to generate data similar to the observed data
+]
+
+
+---
+
+class: middle
+
+# Informative priors
+
+---
+
+## Centering approach
+
+Previously, we've seen that .bold[centering the predictor] around either a sample or hypothesized value .bold[makes the intercept interpretable]
+
+#### Example:
+
+- On an average temperature day, say 65 or 70 degrees for D.C., there are typically around 5000 riders, though this average could be somewhere between 3000 and 7000.
+
+- For every one degree increase in temperature, ridership typically increases by 100 rides, though this average increase could be as low as 20 or as high as 180.
+
+- At any given temperature, daily ridership will tend to vary with a moderate standard deviation of 1250 rides.
+
+
+---
+
+## Standardization approach
+
+Standardizing both the response and predictor also helps with interpretation
+
+`$$y^*_i = \frac{y_i - \overline{y}}{s_y}, \qquad x_i = \frac{x_i - \overline{x}}{s_x}$$`
+
+Updated model: `\(\quad Y_i^* | \mu_i^*, \sigma \overset{ind}{\sim} \mathcal{N}(\mu_i, \sigma)\)`, .hidden[XXX] `\(\mu_i^* = \beta_0 + \beta_1 x^*_i\)`
+
+Interpretations:
+
+---
+
+## Standardization example
+
+How can we specify our priors for `\(\beta_0\)` and `\(\beta_1\)` based on the following prior information?
+
+- On an average temperature day, say 65 or 70 degrees for D.C., there are typically around 5000 riders, though this average could be somewhere between 3000 and 7000.
+
+- The correlation between ridership and temperature is expected to be of moderate strength, most likely between 0.45 and 0.75.
+
+
+---
+
+## Conditional means approach
+
+- So far we have only tried to elicit prior information directly on the parameters
+
+- When working with some domain experts, it might be easier to elicit this information indirectly
+
+- We can ask about the means, `\(\mu_i^*\)` and `\(\mu_j^*\)`, for predictor values `\(x_i\)` and `\(x_j\)`
+
+- Now we have two points `\((x_i, \mu_i^*)\)` and `\((x_j, \mu_j^*)\)` 
+
+---
+
+## Conditional means example
+
+How can we specify our priors for `\(\beta_0\)` and `\(\beta_1\)` based on the following prior information?
+
+- On a 70 `\(^\circ\)`F day there are typically around 4000 riders, though this average could be somewhere between 3000 and 5000.
+
+- On a 50 `\(^\circ\)`F day there are typically around 2000 riders, though this average could be somewhere between 1200 and 2800.
+
+---
+
+## Inducing priors in JAGS
+
+To use an induced prior, tell JAGS how to calculate the *original* parameter from the alternative parameterization (e.g., from `\(\mu_1\)` and `\(\mu_2\)`)
+
+
+```r
+modelString = "model{
+
+# Sampling model
+for(i in 1:n) {
+  y[i] ~ dnorm(beta0 + beta1 * x[i], invsigma2)
+}
+
+# Prior models
+*mu1 ~ dnorm(m1, s1)                         # Specify prior info
+*mu2 ~ dnorm(m2, s2)                         # Specify prior info
+*beta1 &lt;- (mu2 - mu1) / (x2 - x1)            # Calc. beta1 from mu1 &amp; mu2
+*beta0 &lt;- mu1 - x1 * (mu2 - mu1) / (x2 - x1) # Calc. beta0 from mu1 &amp; mu2
+
+invsigma2 ~ dgamma(1, 1)
+sigma &lt;- pow(invsigma2, -1/2)
+}"
+```
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"output": null,
+"ratio": "16:9",
+"highlightStyle": "solarized-light",
+"highlightLanguage": ["r", "css", "yaml"],
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

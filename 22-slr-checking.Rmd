@@ -1,0 +1,511 @@
+---
+title: "Bayesian model checking"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(bayesrules)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+library(tidyverse)
+library(ggridges)
+library(countdown)
+xaringanExtra::use_tachyons()
+
+yt <- 0
+
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+## Coffee ratings
+
+- Interest is in modeling coffee ratings on a 0–100 scale
+
+- Possible predictors include grades on features such as its aroma, aftertaste, flavor, etc.
+
+- Data available in `bayesrules` as `coffee_ratings`
+
+
+```{r}
+library(bayesrules)
+data("coffee_ratings")
+coffee_ratings <- coffee_ratings %>% 
+  select(farm_name, total_cup_points, aroma, aftertaste)
+```
+
+
+.footnote[Data originally from [TidyTuesday](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-07-07), contributed by James LeDoux]
+
+---
+class: inverse
+
+# Your turn `r (yt <- yt + 1)`
+
+.bold[
+Suppose we want to fit a model with the following sampling model:
+
+\begin{align*}
+Y_i | \beta_0, \beta_1, \sigma &\overset{ind}{\sim} \mathcal{N}(\mu_i, \sigma)\\
+\mu_i &= \beta_0 + \beta_1 {\tt aroma}
+\end{align*}
+
+What assumptions/conditions does this model require?
+]
+
+---
+
+class: inverse
+
+# Your turn `r (yt <- yt + 1)`
+
+.bold[
+The coffee_ratings data includes ratings and features of 1339 different batches of beans grown on 571 different farms. 
+
+Explain why using this data to model ratings by aroma likely violates the independence assumption.
+]
+
+---
+
+## Updated example
+
+Let's suppose we only have one observation per farm
+
+```{r}
+set.seed(84735)
+new_coffee <- coffee_ratings %>% 
+  group_by(farm_name) %>% 
+  sample_n(1) %>% 
+  ungroup()
+```
+
+```{r echo=FALSE}
+print(new_coffee, n = 6)
+```
+
+---
+
+## Weakly informative prior model
+
+```{r include=FALSE, cache=TRUE}
+slr_model <- "model{
+# Sampling model
+for(i in 1:n) {
+  y[i] ~ dnorm(beta0 + beta1 * x[i], invsigma2)
+}
+
+# Priors
+beta0 ~ dnorm(0, pow(100, -2))
+beta1 ~ dnorm(0, pow(100, -2))
+invsigma2 ~ dgamma(1, 1)
+sigma <- pow(invsigma2, -1/2)
+}"
+
+slr_draws <- run.jags(slr_model, monitor = c("beta0", "beta1", "sigma"), data = list(y = new_coffee$total_cup_points, x = new_coffee$aroma, n = nrow(new_coffee)), n.chains = 3, burnin = 5000, adapt = 1000, sample = 5000, thin = 80)
+```
+
+```{r echo=FALSE}
+print(slr_draws, digits = 3)
+```
+
+---
+class: inverse 
+# Your turn `r (yt <- yt + 1)`
+
+.bold[Based on this plot of the fitted model, do you see any issues with our assumptions?]
+
+```{r yt3, echo=FALSE, fig.height = 3, fig.width = 4, fig.align='center', out.width = "50%", message=FALSE}
+library(tidybayes)
+post_draws <- tidy_draws(slr_draws$mcmc)
+
+beta_draws <- post_draws %>% select(-sigma)
+mu_link <- function(aroma) beta_draws[["beta0"]] + beta_draws[["beta1"]] * aroma
+
+x_grid <- seq(6.5, 8.5, by = .1)
+yhat_draws<- sapply(x_grid, mu_link)
+
+yhat_mean <- apply(yhat_draws, 2, mean)
+
+yhat_ci <- apply(yhat_draws, 2, quantile, probs = c(0.05, 0.95))
+
+ggplot(new_coffee) +
+  geom_point(aes(x = aroma, y = total_cup_points), shape = 1) +
+  geom_line(
+    data = data.frame(x = x_grid, y = yhat_mean),
+    aes(x = x, y = y),
+    color = "blue") +
+  geom_ribbon(
+    data = data.frame(x = x_grid, ymin = yhat_ci[1,], ymax = yhat_ci[2,]),
+    aes(x = x, ymin=ymin, ymax = ymax),
+    alpha = 0.4
+  ) +
+  theme_light() +
+  labs(y="Total cup points")
+
+ggsave(filename = "22-slr-checking_files/figure-html/yt3-1.pdf")
+```
+
+---
+
+## Residual plots
+
+- In previous courses, you used residual plots to diagnose linearity, constant variance assumptions
+
+- $e_i = y - (\widehat{\beta}_0 + \widehat{\beta}_1 x_i)$
+
+- To create a Bayesian analog, use posterior point estimates for $\widehat{\beta}_0$ and $\widehat{\beta}_1$
+
+
+---
+
+## Residual plots
+
+If you run multiple chains, `tidybayes::tidy_draws` makes it easy to combine them into a single data frame
+```{r}
+post_draws <- tidybayes::tidy_draws(slr_draws$mcmc) 
+```
+
+To calculate $\widehat{\beta}_0 + \widehat{\beta}_1 x_i$ and $e_i$, I find it easiest to add columns to the data
+```{r}
+resids <- new_coffee %>%
+  mutate(
+    beta0 = median(post_draws$beta0),
+    beta1 = median(post_draws$beta1),
+    yhat  = beta0 + beta1 * aroma,
+    resid = total_cup_points - yhat
+  )
+```
+
+---
+
+## Residual plots
+
+Based on this residual plot, are there any model deficiencies?
+
+```{r echo=FALSE, fig.height = 3, fig.width = 4, fig.align='center', out.width = "50%"}
+ggplot(data = resids, aes(x = aroma, y = resid)) +
+  geom_hline(yintercept = 0, linetype = 2, color = "blue") +
+  geom_point(shape = 1) +
+  theme_light() +
+  labs(y = "Residual")
+```
+
+---
+
+## Residual normal Q-Q plot
+
+We can make other familiar plots of residuals using these posterior estimates
+
+```{r echo=FALSE, fig.height = 3, fig.width = 4, fig.align='center', out.width = "50%"}
+ggplot(data = resids, aes(sample = resid)) +
+  geom_qq(alpha = 0.5) +
+  stat_qq_line(linetype = 2, color = "dodgerblue") +
+  theme_light() +
+  labs(x = "N(0,1) quantiles", y = "Sample quantiles")
+```
+
+
+---
+
+## Posterior prediction plots
+
+Plot predicted y (with intervals) vs. observed y and explore discrepancies
+
+.pull-left[
+```{r echo=FALSE, fig.width = 4, fig.height = 3, out.width = "100%"}
+mu_link <- function(aroma) {
+  post_draws[["beta0"]] + post_draws[["beta1"]] * aroma
+}
+
+mu_draws<- sapply(new_coffee$aroma, mu_link)
+
+S <- nrow(post_draws)
+y_draws <- apply(mu_draws, 2, function(x) rnorm(S, x, post_draws[["sigma"]]))
+
+y_means <- colMeans(y_draws)
+y_pis <- apply(y_draws, 2, quantile, probs = c(0.05, 0.95))
+
+ggplot(data = NULL, aes(x = new_coffee$total_cup_points)) +
+  geom_point(aes(y = y_means), alpha = 0.5) +
+  geom_linerange(aes(ymin = y_pis[1,], ymax = y_pis[2,]), alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "dodgerblue") +
+  theme_light() +
+  labs(x ="Observed cup points", y = "Predicted cup points")
+```
+
+]
+
+
+.pull-right[
+
+<br>
+
+For each simulated $(\beta_0^{(j)}, \beta_1^{(j)}, \sigma^{(j)})$
+
+- Calculate $\mu^{(j)}_i = \beta_0^{(j)} + \beta_1^{(j)}x_i$
+
+- Simulate $\tilde{y}^{(j)}_i$ from $\mathcal{N}(\mu^{(j)}_i, \sigma^{(i)})$
+]
+
+---
+
+## Posterior prediction plots
+
+Create a function to calculate $\mu_i$ given an $x_i$ value
+```{r}
+mu_link <- function(x) {
+  post_draws[["beta0"]] + post_draws[["beta1"]] * x
+}
+```
+
+Calculate S $\mu_i$'s for each values in the x vector (`new_coffee$aroma` here)
+```{r}
+mu_draws<- sapply(new_coffee$aroma, mu_link)
+```
+
+Now, we have a $S \times n$ matrix, each column corresponds to an $x_i$
+
+
+---
+
+## Posterior prediction plots
+
+Simulate one $\tilde{y}_i$ for each $\mu_i$ in each column
+```{r}
+S <- nrow(post_draws)
+y_draws <- apply(mu_draws, 2, function(x) rnorm(S, x, post_draws[["sigma"]]))
+```
+
+Now, we have a $S \times n$ matrix of simulated observations
+
+Calculate the mean and PI for each column
+```{r}
+y_means <- colMeans(y_draws)
+y_pis   <- apply(y_draws, 2, quantile, probs = c(0.05, 0.95))
+```
+
+---
+
+## Posterior prediction plots
+
+To use `ggplot2`, let's combine the results into a data frame
+
+```{r}
+post_pred_data <- data.frame(
+  y = new_coffee$total_cup_points, # original y
+  y_pred = y_means,                # avg. predicted response
+  y_lo = y_pis[1,],                # lower bound of predicted response
+  y_hi = y_pis[2,]                 # upper bound of predicted response
+)
+```
+
+Render the plot
+```{r eval=FALSE}
+ggplot(post_pred_data, aes(x = y)) +
+  geom_point(aes(y = y_means), alpha = 0.5) +
+  geom_linerange(aes(ymin = y_lo, ymax = y_hi), alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "dodgerblue")
+
+```
+
+
+---
+
+## Predictive residuals
+
+Plot residual interval estimates vs. predictor
+
+.pull-left[
+```{r echo=FALSE, fig.width = 4, fig.height = 3, out.width = "100%"}
+pred_resids <- post_pred_data %>%
+  mutate(
+    resid = y - y_pred,
+    resid_lo = y - y_lo,
+    resid_hi = y - y_hi,
+    x = jitter(new_coffee$aroma, factor = 2.5)
+    )
+
+ggplot(pred_resids, aes(x = x)) +
+  geom_point(aes(y = resid), alpha = 0.5) +
+  geom_linerange(aes(ymin = resid_lo, ymax = resid_hi), alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "dodgerblue") +
+  labs(x = "Aroma grade", y = "Predictive residual") +
+  theme_light()
+
+```
+]
+
+.pull-right[
+
+<br>
+
+- Does this plot highlight any deficiencies of our model?
+
+- Is it easier to read than the posterior prediction plot?
+]
+
+---
+
+## Predictive residuals
+
+We can start with our posterior prediction plot data set, then calculate the midpoint and endpoints of our residual intervals using those prediction intervals
+```{r}
+pred_resids <- post_pred_data %>%
+  mutate(
+    resid = y - y_pred,
+    resid_lo = y - y_lo,
+    resid_hi = y - y_hi,
+    x = jitter(new_coffee$aroma, factor = 2.5) # avoiding some overlap
+)
+```
+ 
+Create the plot
+
+```{r eval=FALSE}
+ggplot(pred_resids, aes(x = x)) +
+  geom_point(aes(y = resid), alpha = 0.5) +
+  geom_linerange(aes(ymin = resid_lo, ymax = resid_hi), alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "dodgerblue")
+```
+
+---
+
+## Posterior predictive checks
+
+We can also examine the density of the observed and predicted responses.
+
+.pull-left[
+```{r echo=FALSE, fig.height = 3, fig.width = 4, out.width = "100%"}
+ppc_dens_overlay(y = new_coffee$total_cup_points, 
+                 yrep = y_draws[1:100,])
+```
+]
+
+.pull-right[
+- Generate a new data set for each $(\beta_0^{(j)}, \beta_1^{(j)}, \sigma^{(j)})$ for all $x_i$ in the data set
+
+- Same process as with posterior prediction plots, different display
+
+- A good model should for a data set should be able to generate data similar to the observed data
+]
+
+
+---
+
+class: middle
+
+# Informative priors
+
+---
+
+## Centering approach
+
+Previously, we've seen that .bold[centering the predictor] around either a sample or hypothesized value .bold[makes the intercept interpretable]
+
+#### Example:
+
+- On an average temperature day, say 65 or 70 degrees for D.C., there are typically around 5000 riders, though this average could be somewhere between 3000 and 7000.
+
+- For every one degree increase in temperature, ridership typically increases by 100 rides, though this average increase could be as low as 20 or as high as 180.
+
+- At any given temperature, daily ridership will tend to vary with a moderate standard deviation of 1250 rides.
+
+
+---
+
+## Standardization approach
+
+Standardizing both the response and predictor also helps with interpretation
+
+$$y^*_i = \frac{y_i - \overline{y}}{s_y}, \qquad x_i = \frac{x_i - \overline{x}}{s_x}$$
+
+Updated model: $\quad Y_i^* | \mu_i^*, \sigma \overset{ind}{\sim} \mathcal{N}(\mu_i, \sigma)$, .hidden[XXX] $\mu_i^* = \beta_0 + \beta_1 x^*_i$
+
+Interpretations:
+
+---
+
+## Standardization example
+
+How can we specify our priors for $\beta_0$ and $\beta_1$ based on the following prior information?
+
+- On an average temperature day, say 65 or 70 degrees for D.C., there are typically around 5000 riders, though this average could be somewhere between 3000 and 7000.
+
+- The correlation between ridership and temperature is expected to be of moderate strength, most likely between 0.45 and 0.75.
+
+
+---
+
+## Conditional means approach
+
+- So far we have only tried to elicit prior information directly on the parameters
+
+- When working with some domain experts, it might be easier to elicit this information indirectly
+
+- We can ask about the means, $\mu_i^*$ and $\mu_j^*$, for predictor values $x_i$ and $x_j$
+
+- Now we have two points $(x_i, \mu_i^*)$ and $(x_j, \mu_j^*)$ 
+
+---
+
+## Conditional means example
+
+How can we specify our priors for $\beta_0$ and $\beta_1$ based on the following prior information?
+
+- On a 70 $^\circ$F day there are typically around 4000 riders, though this average could be somewhere between 3000 and 5000.
+
+- On a 50 $^\circ$F day there are typically around 2000 riders, though this average could be somewhere between 1200 and 2800.
+
+---
+
+## Inducing priors in JAGS
+
+To use an induced prior, tell JAGS how to calculate the *original* parameter from the alternative parameterization (e.g., from $\mu_1$ and $\mu_2$)
+
+```{r}
+modelString = "model{
+
+# Sampling model
+for(i in 1:n) {
+  y[i] ~ dnorm(beta0 + beta1 * x[i], invsigma2)
+}
+
+# Prior models
+mu1 ~ dnorm(m1, s1)                         # Specify prior info #<<
+mu2 ~ dnorm(m2, s2)                         # Specify prior info #<<
+beta1 <- (mu2 - mu1) / (x2 - x1)            # Calc. beta1 from mu1 & mu2 #<<
+beta0 <- mu1 - x1 * (mu2 - mu1) / (x2 - x1) # Calc. beta0 from mu1 & mu2 #<<
+
+invsigma2 ~ dgamma(1, 1)
+sigma <- pow(invsigma2, -1/2)
+}"
+```
+
