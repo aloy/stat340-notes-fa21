@@ -1,0 +1,301 @@
+---
+title: "Paths foward: Multiple and logistic regression"
+author: "Stat 340: Bayesian Statistics"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css", "hygge"]
+    seal: false
+    lib_dir: libs
+    nature:
+      output:
+      ratio: '16:9'
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(dev = 'svg')
+library(gridExtra)
+library(ggplot2)
+library(ggthemes)
+library(LearnBayes)
+library(bayesrules)
+library(runjags)
+library(coda)
+library(bayesplot)
+library(patchwork)
+library(tidyverse)
+library(ggridges)
+library(countdown)
+library(GGally)
+library(broom.mixed)
+xaringanExtra::use_tachyons()
+
+yt <- 0
+
+homes <- read.csv("http://aloy.rbind.io/data/homes.csv")
+
+```
+
+class: title-slide, left, middle
+
+# `r rmarkdown::metadata$title`
+
+### `r rmarkdown::metadata$author`
+
+
+---
+
+## Example
+
+- Barberan and Leff (2019) published data on dust samples taken from the ledges above doorways in the continental US.  
+
+- Bioinformatics processing detects the presence or absence of 763 species (technically operational taxonomic units) of fungi. 
+- The log of the number of fungi species present in the sample, which is a measure of species richness. 
+
+- Our objective: determine which factors influence a home's species richness. 
+
+---
+
+## Data
+
+For each home, eight explanatory variables (i.e. covariates) are included in this example:
+
+.large[
+Variable    | Description
+------------|------------------------------------
+`lnspecies` | natural log of the number of fungi species present in the sample
+`long`      | longitude
+`lat`       | latitude
+`temp`      | annual mean temperature of the location
+`precip`    | annual mean precipitation of the location
+`NPP`       | net primary productivity (rate at which all the autotrophs in an ecosystem produce net useful chemical energy)
+`elev`      | elevation
+`house`     |  indicator that the house is a single-family home
+`bedrooms`  | number of bedrooms in the home
+]
+
+
+---
+
+## Multiple regression model
+
+Sampling model: $\quad Y_i | x_1, \ldots, x_p \overset{{\rm ind}}{\sim} \mathcal{N}(\mu_i, \ \sigma^2)$
+
+Link function: $\qquad \mu_i = \beta_0 + \beta_1 x_{i1}, + \cdots + \beta_p x_{ip}$
+
+Priors:.hidden[xxxxxxxxxx] We need to place a prior on each coefficient, $\beta_j$, and $\sigma$
+
+---
+
+## JAGS implementation
+
+```{r}
+mlr_string <- "model{
+## Sampling model
+for(i in 1:n) {
+  y[i] ~ dnorm(mu[i], invsigma2)
+  mu[i] <- beta0 + beta1 * temp[i] + beta2 * precip[i]
+}
+
+## Weakly informative priors
+beta0 ~ dnorm(0, 0.0025)
+beta1 ~ dnorm(0, 0.0025)
+beta2 ~ dnorm(0, 0.0025)
+invsigma2 ~ dgamma(0.001, 0.001)
+sigma <- pow(invsigma2, -1/2)
+}"
+```
+
+---
+
+## JAGS implementation
+
+Be sure that there are no NAs in the data set
+```{r}
+mlr_data <- list(
+  y = homes$lnspecies,
+  temp = homes$temp,
+  precip = homes$precip,
+  n = nrow(homes)
+)
+```
+
+---
+
+## JAGS implementation
+
+```{r message=FALSE, results='hide', cache=TRUE, warning=FALSE}
+mlr_posterior <- run.jags(
+  mlr_string,
+  n.chains = 3,
+  data = mlr_data,
+  monitor = c("beta0", "beta1", "beta2", "sigma"),
+  adapt = 1000,
+  burnin = 5000,
+  sample = 5000,
+  thin = 30,
+  silent.jags = TRUE
+)
+```
+
+---
+
+## Posterior summary
+
+```{r}
+print(mlr_posterior, digits = 3)
+```
+
+---
+class: inverse, middle
+
+.big-text[Logistic regression]
+
+---
+
+# Arthritis clinical trial
+
+
+A double-blind clinical trial investigated a new treatment for rheumatoid arthritis 
+
+We'll focus on a subset of the variables:
+
+Variable | Description
+----------|---------------------
+`Better`    | whether the drug improved symptoms <br> 1 = yes, 0 = no
+`Treatment` | Placebo or Treated
+`Sex`       | Male or Female
+`Age`       | Age in years
+
+---
+
+## Logistic regression model
+
+Sampling model: $\quad Y_i | x_1, \ldots, x_p \overset{{\rm ind}}{\sim} {\rm Bern}(p_i)$
+
+Link function: $\qquad \log \left(\dfrac{p_i}{1-p_i} \right) = \beta_0 + \beta_1 x_{i1}, + \cdots + \beta_p x_{ip}$
+
+Priors:.hidden[xxxxxxxxxx] We need to place a prior on each coefficient, $\beta_j$
+
+
+---
+
+# Data preparation
+
+Load and manipulate data
+
+.code100[
+```{r}
+arthritis <- read.csv("http://aloy.rbind.io/data/arthritis.csv")
+```
+]
+
+JAGS needs numeric variables, so convert factors to indicators
+
+.code100[
+```{r}
+arthritis <- arthritis %>%
+  mutate(
+  Treatment = as.numeric(Treatment == "Treated"),
+  Sex = as.numeric(Sex == "Male")
+)
+
+data_list <- list(
+  Y = arthritis$Better, 
+  Treatment = arthritis$Treatment,
+  Sex = arthritis$Sex,
+  Age = arthritis$Age,
+  n = nrow(arthritis)
+)
+```
+]
+---
+
+# Model fitting
+
+```{r}
+# Logistic regression specification
+model_string <- "model{
+## Sampling model
+for(i in 1:n){
+  Y[i] ~ dbern(p[i])
+  logit(p[i]) <- beta0 + beta_sex * Sex[i] + beta_age * Age[i] + 
+      beta_trt * Treatment[i]
+}
+
+## Priors
+beta0 ~ dnorm(0,0.001)
+beta_sex ~ dnorm(0,0.001)
+beta_age ~ dnorm(0,0.001)
+beta_trt ~ dnorm(0,0.001)
+
+}"
+```
+
+---
+
+# Model fitting
+
+```{r cache=TRUE, message=FALSE, results='hide', warning=FALSE}
+# Compile model
+logistic_model <- run.jags(
+  model_string, 
+  data = data_list, 
+  monitor = c("beta0", "beta_sex", "beta_age", "beta_trt"),
+  n.chains = 3, 
+  sample = 5000,
+  thin = 30,
+  silent.jags  = TRUE)
+```
+
+---
+
+## Results
+
+```{r echo=FALSE, results = "asis"}
+post_sum <- tidyMCMC(logistic_model$mcmc, conf.int = TRUE)
+colnames(post_sum)[2:5] <- c("Mean","SD", "2.5%", "97.5%")
+knitr::kable(post_sum, format = "html", digits = 2)
+```
+
+$e^{\widehat{\beta}_{\rm sex}} = `r exp(post_sum$Mean[2])`$
+
+- For subjects in the same treatment group of the same age, the odds of improved symptoms are 0.21 times lower (i.e. about 79% lower) for males than females.
+
+---
+
+## Results
+
+```{r echo=FALSE, results = "asis"}
+post_sum <- tidyMCMC(logistic_model$mcmc, conf.int = TRUE)
+colnames(post_sum)[2:5] <- c("Mean","SD", "2.5%", "97.5%")
+knitr::kable(post_sum, format = "html", digits = 2)
+```
+
+
+$e^{\widehat{\beta}_{\rm age}} = `r exp(post_sum$Mean[3])`$
+
+- For subjects in the same treatment group of the same sex, a one-year increase in age is associated with an increase in the odds of improved symptoms by a factor of 1.05 (i.e. about a 5% increase).
+
+---
+
+## Results
+
+```{r echo=FALSE, results = "asis"}
+post_sum <- tidyMCMC(logistic_model$mcmc, conf.int = TRUE)
+colnames(post_sum)[2:5] <- c("Mean","SD", "2.5%", "97.5%")
+knitr::kable(post_sum, format = "html", digits = 2)
+```
+
+
+$e^{\widehat{\beta}_{\rm treat}} = `r exp(post_sum$Mean[4])`$
+
+- For subjects of the same sex and age, the odds of improved symptoms are `r (b3 <- round(exp(post_sum$Mean[4]), 2))` times higher (i.e. about `r b3*100`% higher) for the treatment group than the placebo group.
+
+
+
